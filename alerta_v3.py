@@ -89,11 +89,21 @@ CSV_URLS = {
 }
 
 EXCLUIR = {
+    # Stablecoins existentes (alias)
     "xkqy1", "xkqy2", "xkqy3", "xkqy4", "xkqy5", "xkqy6", "xkqy7", "xkqy8",
     "xkqy9", "xkqya", "xkqyb", "xkqyc", "xkqyd", "xkqye", "xkqyf",
     "xkqyg", "xkqyh", "xkqyi", "xkqyj", "xkqyk", "xkqyl", "xkqym", "xkqyn",
     "xkqyo", "xkqyp", "xkqyq", "xkqyr", "xkqys", "xkqyt", "xkqyu", "xkqyv",
     "xkqyw", "xkqyx", "xkqyy", "xkqyz", "xkqy0", "xkqz1", "xkqz2",
+    
+    # Añadir estos (por si no están aliasados)
+    "EURCV", "EURI", "EURS", "EURS", "AGEUR", "EURA", "EUROe",
+    "USDE", "USDF", "USDT", "USDC", "DAI", "TUSD", "FDUSD", "BUSD",
+    "USDD", "PYUSD", "USDS", "USD1", "RLUSD", "USD0", "USDSUI",
+    "USDON", "USDAI", "AUSD", "USDG", "USDGO", "USX", "USDF",
+    "GHO", "FRAX", "LUSD", "SUSD", "USDR", "USDY", "USTC", "MIM",
+    "CRVUSD", "PAXG", "XAUT", "WBTC", "WETH", "STETH", "WSTETH",
+    "HTX", "SUSD", "DOLA", "MIM", "ALUSD", "USDN", "USDX",
 }
 
 
