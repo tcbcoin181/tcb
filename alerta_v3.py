@@ -905,4 +905,254 @@ def enviar_tcb(a, btc):
         f"📉 Corrección: {a['profundidad']*100:.0f}% del rango\n"
         f"⏱️ Ratio tiempo: {a['ratio_tiempo']:.2f}x\n"
         f"📊 Volumen: {a['vol_ratio']:.2f}x\n"
-        f"💰 Precio: ${a['p
+        f"💰 Precio: ${a['p_actual']:.6f}\n"
+        f"🎯 Objetivo 50%: ${a['objetivo_50']:.6f}\n"
+        f"🎯 Objetivo 61.8%: ${a['objetivo_618']:.6f}\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"{linea}\n"
+        f"🕐 {hora} Lima"
+    )
+    if aviso:
+        msg += f"\n{aviso}"
+    return enviar_telegram(msg)
+
+
+def enviar_acumulacion(a):
+    hora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%H:%M")
+
+    msg = (
+        f"🚀 ACUMULACIÓN DETECTADA\n"
+        f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 Rango: {a['rango_pct']:.1f}%\n"
+        f"🎯 Posición: {a['pos_rango']:.0f}% del rango\n"
+        f"📈 Cambio reciente: {a['cambio_reciente']:+.2f}%\n"
+        f"💧 Volumen medio: ${a['vol_medio_m']:.1f}M\n"
+        f"📊 Consistencia: {a['vol_cv']:.2f} (bajo = acumulación)\n"
+        f"💰 Precio: ${a['p_actual']:.6f}\n"
+        f"🎯 Resistencia: ${a['p_max']:.6f}\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"⚪ xk1: contexto macro\n"
+        f"🕐 {hora} Lima\n"
+        f"💡 QNT-style: posible explosión"
+    )
+    return enviar_telegram(msg)
+
+
+def enviar_suelo(a, btc):
+    hora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%H:%M")
+    linea, aviso = _contexto_btc(btc)
+
+    msg = (
+        f"🎯 SUELO DETECTADO\n"
+        f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📉 Caída 24h: {a['cambio_24h']:+.2f}%\n"
+        f"📊 Frenado 4h: {a['cambio_4h']:+.2f}%\n"
+        f"💰 Precio: ${a['p_actual']:.6f}\n"
+        f"🏦 Cerca del mínimo: +{a['dist_min']:.2f}%\n"
+        f"📊 Volumen: {a['vol_ratio']:.2f}x (creciente)\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"{linea}\n"
+        f"🕐 {hora} Lima"
+    )
+    if aviso:
+        msg += f"\n{aviso}"
+    return enviar_telegram(msg)
+
+
+def enviar_reentrada(a, btc):
+    hora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%H:%M")
+    linea, aviso = _contexto_btc(btc)
+
+    msg = (
+        f"📐 REENTRADA FIBO\n"
+        f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"📊 Pump previo: +{a['pump_pct']:.1f}%\n"
+        f"🎯 Fibo actual: {a['pos_actual']:.1f}%\n"
+        f"📈 Rebote: +{a['rebote']:.2f}%\n"
+        f"💰 Precio: ${a['p_actual']:.6f}\n"
+        f"📉 Niveles:\n"
+        f"   • 38.2%: ${a['fib_382']:.6f}\n"
+        f"   • 50.0%: ${a['fib_500']:.6f}\n"
+        f"   • 61.8%: ${a['fib_618']:.6f}\n"
+        f"📊 Volumen: {a['vol_ratio']:.2f}x\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"{linea}\n"
+        f"🕐 {hora} Lima"
+    )
+    if aviso:
+        msg += f"\n{aviso}"
+    return enviar_telegram(msg)
+
+
+def enviar_arranque(a, btc):
+    hora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%H:%M")
+    linea, aviso = _contexto_btc(btc)
+
+    if a["señal"] == "FUERTE":
+        emoji = "🚨"
+        titulo = "ARRANQUE FUERTE"
+    else:
+        emoji = "🟡"
+        titulo = "ARRANQUE TEMPRANO"
+
+    msg = (
+        f"{emoji} {titulo}\n"
+        f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
+        f"📈 +{a['cambio_1h']:.2f}% en 1h\n"
+        f"📊 4h: {a['cambio_4h']:+.2f}% | 24h: {a['cambio_24h']:+.2f}%\n"
+        f"💰 ${a['p_actual']:.6f}\n"
+        f"📊 Vol: {a['vol_ratio']:.2f}x (${a['vol_m']:.1f}M)\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"{linea}\n"
+        f"🕐 {hora} Lima"
+    )
+    if aviso:
+        msg += f"\n{aviso}"
+    return enviar_telegram(msg)
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+def main():
+    ahora = datetime.now(timezone.utc)
+    ahora_lima = ahora - timedelta(hours=5)
+
+    print(f"\n{'='*70}")
+    print(f"🎯 ALERTA V3 — TCB + ACUM + SUELO + REENT + ARRANQUE")
+    print(f"   UTC:  {ahora.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"   Lima: {ahora_lima.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"{'='*70}")
+
+    df = cargar_datos()
+    print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
+
+    # Velas
+    print("\n📊 Generando velas...")
+    velas_1h = hacer_velas(df, vela_min=60)
+    velas_4h = hacer_velas(df, vela_min=240)
+    print(f"   Velas 1h: {len(velas_1h):,}")
+    print(f"   Velas 4h: {len(velas_4h):,}")
+
+    # Pivotes
+    print("📊 Detectando pivotes...")
+    velas_1h = detectar_pivotes(velas_1h, ventana=3)
+    velas_4h = detectar_pivotes(velas_4h, ventana=3)
+
+    # Análisis BTC
+    print("\n₿ Analizando BTC...")
+    btc = analizar_btc(velas_4h)
+    linea_btc, aviso_btc = _contexto_btc(btc)
+    print(f"   {linea_btc}")
+    if aviso_btc:
+        print(f"   {aviso_btc}")
+
+    # Guardar estado BTC
+    estado_previo = cargar_btc_estado_previo()
+    if estado_previo and estado_previo != btc["estado"]:
+        print(f"   🔄 Cambio: {estado_previo} → {btc['estado']}")
+    guardar_btc_estado(btc["estado"])
+
+    # Cargar state de alertas
+    alertas_state = cargar_alertas_state()
+
+    # ═══════════════════════════════════════════════════════════
+    # ESCANEO
+    # ═══════════════════════════════════════════════════════════
+
+    print("\n🔍 Escaneando señales...")
+
+    tcb_list = detectar_tcb(velas_4h, btc["estado"])
+    print(f"   🎯 TCB: {len(tcb_list)}")
+
+    acum_list = detectar_acumulacion(velas_4h)
+    print(f"   🚀 ACUMULACIÓN: {len(acum_list)}")
+
+    suelo_list = detectar_suelo(velas_1h, btc["estado"])
+    print(f"   🎯 SUELO: {len(suelo_list)}")
+
+    reent_list = detectar_reentrada(velas_1h, btc["estado"])
+    print(f"   📐 REENTRADA: {len(reent_list)}")
+
+    arranque_list = detectar_arranque(velas_1h, btc["estado"])
+    print(f"   🟡 ARRANQUE: {len(arranque_list)}")
+
+    # ═══════════════════════════════════════════════════════════
+    # ENVÍO CON PRIORIDAD
+    # ═══════════════════════════════════════════════════════════
+
+    enviadas = 0
+
+    # 1. TCB (máxima prioridad)
+    tcb_list.sort(key=lambda x: (x["ratio_tiempo"], -x["vol_ratio"]))
+    for a in tcb_list[:MAX_TCB]:
+        if not paso_cooldown(alertas_state, a["symbol"], "TCB", COOLDOWN_TCB):
+            continue
+        if enviar_tcb(a, btc):
+            enviadas += 1
+            registrar_alerta(alertas_state, a["symbol"], "TCB")
+            print(f"   ✅ TCB: {a_real(a['symbol'])}")
+
+    # 2. ACUMULACIÓN
+    acum_list.sort(key=lambda x: (-x["pos_rango"], x["vol_cv"]))
+    for a in acum_list[:MAX_ACUM]:
+        if not paso_cooldown(alertas_state, a["symbol"], "ACUM", COOLDOWN_ACUM):
+            continue
+        if enviar_acumulacion(a):
+            enviadas += 1
+            registrar_alerta(alertas_state, a["symbol"], "ACUM")
+            print(f"   ✅ ACUM: {a_real(a['symbol'])}")
+
+    # 3. SUELO
+    suelo_list.sort(key=lambda x: x["dist_min"])
+    for a in suelo_list[:MAX_SUELO]:
+        if not paso_cooldown(alertas_state, a["symbol"], "SUELO", COOLDOWN_SUELO):
+            continue
+        if enviar_suelo(a, btc):
+            enviadas += 1
+            registrar_alerta(alertas_state, a["symbol"], "SUELO")
+            print(f"   ✅ SUELO: {a_real(a['symbol'])}")
+
+    # 4. REENTRADA
+    reent_list.sort(key=lambda x: abs(x["pos_actual"] - 61.8))
+    for a in reent_list[:MAX_REENTRADA]:
+        if not paso_cooldown(alertas_state, a["symbol"], "REENTRADA", COOLDOWN_REENTRADA):
+            continue
+        if enviar_reentrada(a, btc):
+            enviadas += 1
+            registrar_alerta(alertas_state, a["symbol"], "REENTRADA")
+            print(f"   ✅ REENTRADA: {a_real(a['symbol'])}")
+
+    # 5. ARRANQUE
+    arranque_list.sort(key=lambda x: -x["cambio_1h"])
+    for a in arranque_list[:MAX_ARRANQUE]:
+        if not paso_cooldown(alertas_state, a["symbol"], "ARRANQUE", COOLDOWN_ARRANQUE):
+            continue
+        if enviar_arranque(a, btc):
+            enviadas += 1
+            registrar_alerta(alertas_state, a["symbol"], "ARRANQUE")
+            print(f"   ✅ ARRANQUE: {a_real(a['symbol'])}")
+
+    # Guardar state
+    guardar_alertas_state(alertas_state)
+
+    # Resumen
+    print(f"\n{'='*70}")
+    print(f"📢 RESUMEN")
+    print(f"   {linea_btc}")
+    print(f"   Alertas enviadas: {enviadas}")
+    print(f"{'='*70}")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(f"\n❌ ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
