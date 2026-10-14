@@ -900,7 +900,7 @@ def enviar_tcb(a, btc):
     linea, aviso = _contexto_btc(btc)
 
     msg = (
-        f"🎯 TCB DETECTADO\n"
+        f"🎯 [TCB] TCB DETECTADO\n"
         f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"📈 Rally: +{a['rango_pct']:.1f}% en {a['dur_rally']} velas\n"
@@ -924,7 +924,7 @@ def enviar_acumulacion(a, btc):
     linea, aviso = _contexto_btc(btc)
 
     msg = (
-        f"🚀 ACUMULACIÓN DETECTADA\n"
+        f"🚀 [TCB] ACUMULACIÓN DETECTADA\n"
         f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"📊 Rango: {a['rango_pct']:.1f}%\n"
@@ -949,7 +949,7 @@ def enviar_suelo(a, btc):
     linea, aviso = _contexto_btc(btc)
 
     msg = (
-        f"🎯 SUELO DETECTADO\n"
+        f"🎯 [TCB] SUELO DETECTADO\n"
         f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"📉 Caída 24h: {a['cambio_24h']:+.2f}%\n"
@@ -971,7 +971,7 @@ def enviar_reentrada(a, btc):
     linea, aviso = _contexto_btc(btc)
 
     msg = (
-        f"📐 REENTRADA FIBO\n"
+        f"📐 [TCB] REENTRADA FIBO\n"
         f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"📊 Pump previo: +{a['pump_pct']:.1f}%\n"
@@ -1004,7 +1004,7 @@ def enviar_arranque(a, btc):
         titulo = "ARRANQUE TEMPRANO"
 
     msg = (
-        f"{emoji} {titulo}\n"
+        f"{emoji} [TCB] {titulo}\n"
         f"🪙 {a_real(a['symbol'])} (rank {a['rank']})\n"
         f"📈 +{a['cambio_1h']:.2f}% en 1h\n"
         f"📊 4h: {a['cambio_4h']:+.2f}% | 24h: {a['cambio_24h']:+.2f}%\n"
