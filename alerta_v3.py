@@ -16,6 +16,7 @@ Filtro BTC (4h):
   - BTC rompió 0.786 → bloqueo total
 
 Sistema de alias: lee secretos.json o SECRETOS_JSON
+Telegram: usa a_real() para mostrar nombres reales
 """
 
 import json
@@ -396,15 +397,17 @@ def analizar_btc(velas_4h):
 
 
 def _contexto_btc(btc):
+    """Devuelve (linea, aviso) con nombre real de BTC."""
+    btc_nombre = a_real("xk1")
     mapa = {
-        "SOPORTE_786_REBOTANDO": ("🟢 xk1: rebote desde 0.786", "🔥 MOMENTO ÓPTIMO"),
-        "SOPORTE_786": ("🟡 xk1: en 0.786 — esperando rebote", "⏳ Vigilar"),
-        "SOPORTE_618": ("🟡 xk1: en 0.618", "⚠️ Posible corrección mayor"),
-        "ROMPIO_786": ("🔴 xk1: rompió 0.786", "🚨 NO ENTRAR"),
-        "SIN_SOPORTE": ("⚪ xk1: fuera de soporte", "⚠️ Sin contexto claro"),
-        "UNKNOWN": ("❓ xk1: sin datos", ""),
+        "SOPORTE_786_REBOTANDO": (f"🟢 {btc_nombre}: rebote desde 0.786", "🔥 MOMENTO ÓPTIMO"),
+        "SOPORTE_786": (f"🟡 {btc_nombre}: en 0.786 — esperando rebote", "⏳ Vigilar"),
+        "SOPORTE_618": (f"🟡 {btc_nombre}: en 0.618", "⚠️ Posible corrección mayor"),
+        "ROMPIO_786": (f"🔴 {btc_nombre}: rompió 0.786", "🚨 NO ENTRAR"),
+        "SIN_SOPORTE": (f"⚪ {btc_nombre}: fuera de soporte", "⚠️ Sin contexto claro"),
+        "UNKNOWN": (f"❓ {btc_nombre}: sin datos", ""),
     }
-    return mapa.get(btc["estado"], ("⚪ xk1: neutral", ""))
+    return mapa.get(btc["estado"], (f"⚪ {btc_nombre}: neutral", ""))
 
 
 # ============================================================
@@ -490,8 +493,7 @@ def detectar_tcb(velas, btc_estado):
         if len(g) < 30:
             continue
 
-        # Verificar frescura y calidad
-        ts_max = g["vela"].max()
+        # Verificar calidad
         rank = g.iloc[-1].get("rank", 9999)
         mc = g.iloc[-1].get("mc", 0) or 0
         if not cumple_calidad(mc, rank):
@@ -917,8 +919,9 @@ def enviar_tcb(a, btc):
     return enviar_telegram(msg)
 
 
-def enviar_acumulacion(a):
+def enviar_acumulacion(a, btc):
     hora = (datetime.now(timezone.utc) - timedelta(hours=5)).strftime("%H:%M")
+    linea, aviso = _contexto_btc(btc)
 
     msg = (
         f"🚀 ACUMULACIÓN DETECTADA\n"
@@ -932,10 +935,12 @@ def enviar_acumulacion(a):
         f"💰 Precio: ${a['p_actual']:.6f}\n"
         f"🎯 Resistencia: ${a['p_max']:.6f}\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
-        f"⚪ xk1: contexto macro\n"
+        f"{linea}\n"
         f"🕐 {hora} Lima\n"
         f"💡 QNT-style: posible explosión"
     )
+    if aviso:
+        msg += f"\n{aviso}"
     return enviar_telegram(msg)
 
 
@@ -1102,7 +1107,7 @@ def main():
     for a in acum_list[:MAX_ACUM]:
         if not paso_cooldown(alertas_state, a["symbol"], "ACUM", COOLDOWN_ACUM):
             continue
-        if enviar_acumulacion(a):
+        if enviar_acumulacion(a, btc):
             enviadas += 1
             registrar_alerta(alertas_state, a["symbol"], "ACUM")
             print(f"   ✅ ACUM: {a_real(a['symbol'])}")
