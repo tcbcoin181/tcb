@@ -430,6 +430,19 @@ def main():
     df = cargar_datos()
     print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
 
+    # === VERIFICACIÓN DE FRESCURA ===
+    print(f"\n🕐 Antigüedad de los datos (últimas velas):")
+    for alias in sorted(TODAS_LIDERES):
+        nombre = a_real(alias)
+        g = df[df["symbol"] == alias]
+        if len(g) > 0:
+            ts = g["timestamp"].max()
+            edad = (datetime.now(timezone.utc) - ts).total_seconds() / 60
+            print(f"   {nombre}: última vela hace {edad:.0f} min")
+        else:
+            print(f"   {nombre}: ❌ NO ENCONTRADO")
+    # === FIN VERIFICACIÓN ===
+
     btc = analizar_btc(df)
     print(f"\n🔍 {a_real(ALIAS_BTC)}: {btc['estado']} ({btc['cambio_1h']:+.2f}% 1h)")
 
