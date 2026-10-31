@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ALERTA LÍDERES — Detección de techos/suelos en monedas clave
-Usa la misma lógica del ARRANQUE de alerta_v6.py
+ALERTA LÍDERES — Detección de SUELOS y TECHOS en monedas clave
+Usa la misma lógica de alerta_v6.py (detectar_suelo)
 """
 
 import json
@@ -78,27 +78,39 @@ TODAS_LIDERES = GRUPO_RAPIDO | GRUPO_LENTO | GRUPO_BIMODAL
 
 ALIAS_BTC = "xk1"
 
-# Umbrales del ARRANQUE (los mismos de alerta_v6.py)
-TEMPRANA_CAMBIO_1H  = 2.0
-TEMPRANA_VOL_MIN    = 1.2
-TEMPRANA_VOL_MAX    = 1.3
+# ============================================================
+# UMBRALES — SUELO (los mismos de alerta_v6.py)
+# ============================================================
 
-FUERTE_CAMBIO_1H    = 3.0
-FUERTE_VOL_MIN      = 1.3
+SUELO_CAIDA_24H_MIN     = -10.0
+SUELO_FRENADO_LO        = -1.0
+SUELO_FRENADO_HI        = 1.0
+SUELO_DIST_MIN_MAX      = 3.0
+SUELO_VOL_DECRECIENTE   = 0.75
+SUELO_RANGO_COMPRESION  = 0.60
 
-VOL_ABS_MIN         = 500_000
-MAX_CAMBIO_4H       = 5.0
-MAX_CAMBIO_24H      = 15.0
+VOL_ABS_MIN             = 500_000
+
+# ============================================================
+# UMBRALES — TECHO (inverso al suelo)
+# ============================================================
+
+TECHO_SUBIDA_24H_MIN    = 10.0      # subió al menos 10% en 24h
+TECHO_FRENADO_LO        = -1.0      # en 4h se estabilizó
+TECHO_FRENADO_HI        = 1.0
+TECHO_DIST_MAX_MAX      = 3.0       # cerca del máximo de 24h
+TECHO_VOL_DECRECIENTE   = 0.75
+TECHO_RANGO_COMPRESION  = 0.60
 
 # Cooldowns
-COOLDOWN_LIDER      = 4
+COOLDOWN_LIDER          = 4
 
 # Filtros de calidad
-MC_MIN              = 50_000_000
-MC_MAX              = 5_000_000_000
-RANK_MAX            = 300
+MC_MIN                  = 50_000_000
+MC_MAX                  = 5_000_000_000
+RANK_MAX                = 300
 
-ALERTAS_STATE_FILE  = "alertas_lideres_state.json"
+ALERTAS_STATE_FILE      = "alertas_lideres_state.json"
 
 
 # ============================================================
@@ -237,15 +249,11 @@ def cumple_calidad(mc, rank):
 
 
 # ============================================================
-# DETECCIÓN — ARRANQUE (misma lógica de alerta_v6.py)
+# DETECCIÓN — SUELO (misma lógica de alerta_v6.py)
 # ============================================================
 
-def detectar_arranque(df, alias):
-    """
-    Detecta arranque (subida fuerte) en una moneda líder.
-    Usa la misma lógica de alerta_v6.py.
-    Devuelve dict con señal (FUERTE/TEMPRANA) o None.
-    """
+def detectar_suelo(df, alias):
+    """Detecta SUELO en una moneda líder (misma lógica de alerta_v6.py)."""
     if alias not in TODAS_LIDERES:
         return None
 
@@ -262,53 +270,60 @@ def detectar_arranque(df, alias):
     if not cumple_calidad(mc, rank):
         return None
 
-    # Cambio 1h
-    corte_1h = ts_max - timedelta(hours=1)
-    rec_1h = g[g["timestamp"] >= corte_1h]
-    if len(rec_1h) < 3:
-        return None
-    p_ini_1h = rec_1h.iloc[0]["price"]
-    p_fin = rec_1h.iloc[-1]["price"]
-    if p_ini_1h <= 0:
-        return None
-    cambio_1h = ((p_fin - p_ini_1h) / p_ini_1h) * 100
-
-    # Cambio 4h
-    corte_4h = ts_max - timedelta(hours=4)
-    rec_4h = g[g["timestamp"] >= corte_4h]
-    if len(rec_4h) < 3:
-        return None
-    p_ini_4h = rec_4h.iloc[0]["price"]
-    cambio_4h = ((p_fin - p_ini_4h) / p_ini_4h) * 100 if p_ini_4h > 0 else 0
-
-    # Cambio 24h
+    corte_4h  = ts_max - timedelta(hours=4)
+    corte_12h = ts_max - timedelta(hours=12)
     corte_24h = ts_max - timedelta(hours=24)
+    rec_4h  = g[g["timestamp"] >= corte_4h]
+    rec_12h = g[g["timestamp"] >= corte_12h]
     rec_24h = g[g["timestamp"] >= corte_24h]
-    p_ini_24h = rec_24h.iloc[0]["price"] if len(rec_24h) > 0 else p_ini_4h
-    cambio_24h = ((p_fin - p_ini_24h) / p_ini_24h) * 100 if p_ini_24h > 0 else 0
-
-    # Filtros de seguridad (evitar pumps ya pasados)
-    if cambio_4h > MAX_CAMBIO_4H:
-        return None
-    if cambio_24h > MAX_CAMBIO_24H:
+    if len(rec_4h) < 3 or len(rec_24h) < 5:
         return None
 
-    # Volumen
-    v_base = g["volume_24h"].tail(20).mean()
+    p_ini_24h = rec_24h.iloc[0]["price"]
+    p_actual  = g.iloc[-1]["price"]
+    p_ini_4h  = rec_4h.iloc[0]["price"]
+    if p_ini_24h <= 0 or p_ini_4h <= 0:
+        return None
+
+    cambio_24h = ((p_actual - p_ini_24h) / p_ini_24h) * 100
+    cambio_4h  = ((p_actual - p_ini_4h) / p_ini_4h) * 100
+
+    if cambio_24h > SUELO_CAIDA_24H_MIN:
+        return None
+    if cambio_4h < SUELO_FRENADO_LO or cambio_4h > SUELO_FRENADO_HI:
+        return None
+
+    p_min_24h = rec_24h["price"].min()
+    if p_min_24h <= 0:
+        return None
+    dist_min = ((p_actual - p_min_24h) / p_min_24h) * 100
+    if dist_min > SUELO_DIST_MIN_MAX:
+        return None
+
+    if "volume_24h" not in g.columns:
+        return None
+    rec_12h_ant = rec_12h[rec_12h["timestamp"] < corte_4h]
+    if len(rec_12h_ant) < 3:
+        return None
+
+    v_reciente = rec_4h["volume_24h"].iloc[-1]
+    v_anterior = rec_12h_ant["volume_24h"].mean()
+    if v_anterior <= 0:
+        return None
+    compresion_vol = v_reciente / v_anterior
+    if compresion_vol > SUELO_VOL_DECRECIENTE:
+        return None
+
+    rango_reciente = rec_4h["price"].max() - rec_4h["price"].min()
+    rango_anterior = (rec_12h_ant["price"].max() - rec_12h_ant["price"].min())
+    if rango_anterior <= 0:
+        return None
+    compresion_rango = rango_reciente / rango_anterior
+    if compresion_rango > SUELO_RANGO_COMPRESION:
+        return None
+
     v_ult = g["volume_24h"].iloc[-1]
-    vol_ratio = v_ult / v_base if v_base > 0 else 0
     if v_ult < VOL_ABS_MIN:
-        return None
-
-    # Determinar señal (misma lógica de alerta_v6.py)
-    señal = None
-    if cambio_1h >= FUERTE_CAMBIO_1H and vol_ratio >= FUERTE_VOL_MIN:
-        señal = "FUERTE"
-    elif (cambio_1h >= TEMPRANA_CAMBIO_1H and
-          TEMPRANA_VOL_MIN <= vol_ratio < TEMPRANA_VOL_MAX):
-        señal = "TEMPRANA"
-
-    if señal is None:
         return None
 
     # Determinar grupo
@@ -320,15 +335,125 @@ def detectar_arranque(df, alias):
         grupo = "BIMODAL"
 
     return {
-        "tipo": "ARRANQUE",
-        "señal": señal,
+        "tipo": "SUELO",
         "symbol": alias,
         "grupo": grupo,
-        "precio": p_fin,
-        "cambio_1h": cambio_1h,
-        "cambio_4h": cambio_4h,
         "cambio_24h": cambio_24h,
-        "vol_ratio": vol_ratio,
+        "cambio_4h": cambio_4h,
+        "precio": p_actual,
+        "p_min_24h": p_min_24h,
+        "dist_min": dist_min,
+        "compresion_vol": compresion_vol,
+        "compresion_rango": compresion_rango,
+        "vol_ratio": compresion_vol,
+        "vol_m": v_ult / 1e6,
+        "cmc_rank": int(rank),
+        "market_cap_m": mc / 1e6,
+        "ts": ts_max,
+    }
+
+
+# ============================================================
+# DETECCIÓN — TECHO (inverso al suelo)
+# ============================================================
+
+def detectar_techo(df, alias):
+    """Detecta TECHO en una moneda líder (lógica inversa al suelo)."""
+    if alias not in TODAS_LIDERES:
+        return None
+
+    g = df[df["symbol"] == alias].sort_values("timestamp")
+    if len(g) < 40:
+        return None
+
+    ts_max = g["timestamp"].max()
+    if not es_fresco(ts_max, minutos=30):
+        return None
+
+    mc = g.iloc[-1].get("market_cap", 0) or 0
+    rank = g.iloc[-1].get("cmc_rank", 9999)
+    if not cumple_calidad(mc, rank):
+        return None
+
+    corte_4h  = ts_max - timedelta(hours=4)
+    corte_12h = ts_max - timedelta(hours=12)
+    corte_24h = ts_max - timedelta(hours=24)
+    rec_4h  = g[g["timestamp"] >= corte_4h]
+    rec_12h = g[g["timestamp"] >= corte_12h]
+    rec_24h = g[g["timestamp"] >= corte_24h]
+    if len(rec_4h) < 3 or len(rec_24h) < 5:
+        return None
+
+    p_ini_24h = rec_24h.iloc[0]["price"]
+    p_actual  = g.iloc[-1]["price"]
+    p_ini_4h  = rec_4h.iloc[0]["price"]
+    if p_ini_24h <= 0 or p_ini_4h <= 0:
+        return None
+
+    cambio_24h = ((p_actual - p_ini_24h) / p_ini_24h) * 100
+    cambio_4h  = ((p_actual - p_ini_4h) / p_ini_4h) * 100
+
+    # Inverso al suelo: subió al menos 10% en 24h
+    if cambio_24h < TECHO_SUBIDA_24H_MIN:
+        return None
+    # En 4h se estabilizó
+    if cambio_4h < TECHO_FRENADO_LO or cambio_4h > TECHO_FRENADO_HI:
+        return None
+
+    # Cerca del máximo de 24h
+    p_max_24h = rec_24h["price"].max()
+    if p_max_24h <= 0:
+        return None
+    dist_max = ((p_max_24h - p_actual) / p_max_24h) * 100
+    if dist_max > TECHO_DIST_MAX_MAX:
+        return None
+
+    # Volumen decreciente
+    if "volume_24h" not in g.columns:
+        return None
+    rec_12h_ant = rec_12h[rec_12h["timestamp"] < corte_4h]
+    if len(rec_12h_ant) < 3:
+        return None
+
+    v_reciente = rec_4h["volume_24h"].iloc[-1]
+    v_anterior = rec_12h_ant["volume_24h"].mean()
+    if v_anterior <= 0:
+        return None
+    compresion_vol = v_reciente / v_anterior
+    if compresion_vol > TECHO_VOL_DECRECIENTE:
+        return None
+
+    rango_reciente = rec_4h["price"].max() - rec_4h["price"].min()
+    rango_anterior = (rec_12h_ant["price"].max() - rec_12h_ant["price"].min())
+    if rango_anterior <= 0:
+        return None
+    compresion_rango = rango_reciente / rango_anterior
+    if compresion_rango > TECHO_RANGO_COMPRESION:
+        return None
+
+    v_ult = g["volume_24h"].iloc[-1]
+    if v_ult < VOL_ABS_MIN:
+        return None
+
+    if alias in GRUPO_RAPIDO:
+        grupo = "RAPIDA"
+    elif alias in GRUPO_LENTO:
+        grupo = "LENTA"
+    else:
+        grupo = "BIMODAL"
+
+    return {
+        "tipo": "TECHO",
+        "symbol": alias,
+        "grupo": grupo,
+        "cambio_24h": cambio_24h,
+        "cambio_4h": cambio_4h,
+        "precio": p_actual,
+        "p_max_24h": p_max_24h,
+        "dist_max": dist_max,
+        "compresion_vol": compresion_vol,
+        "compresion_rango": compresion_rango,
+        "vol_ratio": compresion_vol,
         "vol_m": v_ult / 1e6,
         "cmc_rank": int(rank),
         "market_cap_m": mc / 1e6,
@@ -344,39 +469,25 @@ def enviar_alerta_lideres(lideres, btc):
     if not lideres:
         return False
 
-    # Contar por grupo
-    conteo = {
-        "RAPIDA": 0, "LENTA": 0, "BIMODAL": 0,
-    }
-    fuertes = 0
-    tempranas = 0
-    for a in lideres:
-        conteo[a["grupo"]] += 1
-        if a["señal"] == "FUERTE":
-            fuertes += 1
-        else:
-            tempranas += 1
+    # Separar suelos y techos
+    suelos = [a for a in lideres if a["tipo"] == "SUELO"]
+    techos = [a for a in lideres if a["tipo"] == "TECHO"]
 
-    total = len(lideres)
+    msg = "📡 *MONEDAS LÍDERES — SUELOS/TECHOS*\n━━━━━━━━━━━━━━━━━━━\n"
 
-    msg = "📡 *MONEDAS LÍDERES — ARRANQUE*\n━━━━━━━━━━━━━━━━━━━\n"
+    if suelos:
+        msg += f"\n🟢 *SUELOS DETECTADOS: {len(suelos)}*\n"
+        for a in suelos[:5]:
+            msg += f"   {a_real(a['symbol'])} ({a['grupo']})\n"
+            msg += f"   Caída 24h: {a['cambio_24h']:+.2f}% | Frenado 4h: {a['cambio_4h']:+.2f}%\n"
+            msg += f"   Vol: {a['compresion_vol']:.2f}x | Rango: {a['compresion_rango']:.2f}x\n\n"
 
-    if fuertes >= 2:
-        msg += f"🚨 *SEÑAL FUERTE*: {fuertes} líderes con ARRANQUE FUERTE\n"
-    elif fuertes == 1:
-        msg += f"⚠️ *SEÑAL MEDIA*: 1 líder con ARRANQUE FUERTE\n"
-
-    if tempranas >= 2:
-        msg += f"🟡 *SEÑAL TEMPRANA*: {tempranas} líderes con ARRANQUE TEMPRANO\n"
-
-    msg += f"\n📊 Total: {total} líderes detectados\n"
-    msg += f"   Rápidas: {conteo['RAPIDA']} | Lentas: {conteo['LENTA']} | Bimodales: {conteo['BIMODAL']}\n\n"
-
-    for a in lideres[:10]:
-        emoji = "🚨" if a["señal"] == "FUERTE" else "🟡"
-        msg += f"{emoji} {a_real(a['symbol'])} ({a['grupo']}) — {a['señal']}\n"
-        msg += f"   +{a['cambio_1h']:.2f}% en 1h | 4h: {a['cambio_4h']:+.2f}%\n"
-        msg += f"   Precio: ${a['precio']:.6f} | Vol: {a['vol_ratio']:.2f}x\n\n"
+    if techos:
+        msg += f"\n🔴 *TECHOS DETECTADOS: {len(techos)}*\n"
+        for a in techos[:5]:
+            msg += f"   {a_real(a['symbol'])} ({a['grupo']})\n"
+            msg += f"   Subida 24h: {a['cambio_24h']:+.2f}% | Frenado 4h: {a['cambio_4h']:+.2f}%\n"
+            msg += f"   Vol: {a['compresion_vol']:.2f}x | Rango: {a['compresion_rango']:.2f}x\n\n"
 
     if btc:
         msg += f"⚪ BTC: {btc.get('estado', 'UNKNOWN')} ({btc.get('cambio_1h', 0):+.2f}% 1h)\n"
@@ -430,48 +541,44 @@ def main():
     df = cargar_datos()
     print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
 
-    # === VERIFICACIÓN DE FRESCURA ===
-    print(f"\n🕐 Antigüedad de los datos (últimas velas):")
-    for alias in sorted(TODAS_LIDERES):
-        nombre = a_real(alias)
-        g = df[df["symbol"] == alias]
-        if len(g) > 0:
-            ts = g["timestamp"].max()
-            edad = (datetime.now(timezone.utc) - ts).total_seconds() / 60
-            print(f"   {nombre}: última vela hace {edad:.0f} min")
-        else:
-            print(f"   {nombre}: ❌ NO ENCONTRADO")
-    # === FIN VERIFICACIÓN ===
-
     btc = analizar_btc(df)
     print(f"\n🔍 {a_real(ALIAS_BTC)}: {btc['estado']} ({btc['cambio_1h']:+.2f}% 1h)")
 
     alertas_state = cargar_alertas_state()
 
-    print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes...")
+    print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes (suelos y techos)...")
     lideres = []
     for alias in TODAS_LIDERES:
-        r = detectar_arranque(df, alias)
+        # Detectar suelo
+        r = detectar_suelo(df, alias)
         if r:
-            if not paso_cooldown(alertas_state, r["symbol"], "LIDER", COOLDOWN_LIDER):
-                print(f"   ⏳ {a_real(r['symbol'])} en cooldown")
-                continue
-            lideres.append(r)
+            if paso_cooldown(alertas_state, r["symbol"], "SUELO", COOLDOWN_LIDER):
+                lideres.append(r)
+                print(f"   🟢 SUELO: {a_real(alias)} ({r['grupo']}) — caída {r['cambio_24h']:.2f}%")
+            else:
+                print(f"   ⏳ {a_real(alias)} SUELO en cooldown")
+            continue
+
+        # Detectar techo
+        r = detectar_techo(df, alias)
+        if r:
+            if paso_cooldown(alertas_state, r["symbol"], "TECHO", COOLDOWN_LIDER):
+                lideres.append(r)
+                print(f"   🔴 TECHO: {a_real(alias)} ({r['grupo']}) — subida {r['cambio_24h']:.2f}%")
+            else:
+                print(f"   ⏳ {a_real(alias)} TECHO en cooldown")
 
     if lideres:
-        print(f"   🔺 {len(lideres)} líderes con arranque detectado:")
-        for a in lideres:
-            print(f"      {a_real(a['symbol'])} ({a['grupo']}) — {a['señal']} (+{a['cambio_1h']:.2f}%)")
-
         if enviar_alerta_lideres(lideres, btc):
             print(f"   📱 Alerta enviada")
             for a in lideres:
-                registrar_alerta(alertas_state, a["symbol"], "LIDER")
+                tipo = "SUELO" if a["tipo"] == "SUELO" else "TECHO"
+                registrar_alerta(alertas_state, a["symbol"], tipo)
             guardar_alertas_state(alertas_state)
         else:
             print(f"   ⚠️ No se pudo enviar la alerta")
     else:
-        print("   ⚪ Sin líderes detectados.")
+        print("   ⚪ Sin suelos ni techos detectados.")
 
     print(f"\n✅ Análisis completado.")
 
