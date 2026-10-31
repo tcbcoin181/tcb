@@ -454,6 +454,39 @@ def main():
     alertas_state = cargar_alertas_state()
 
     print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes (Fibonacci)...")
+
+    # === DIAGNÓSTICO FIBO (AÑADIR AQUÍ) ===
+    print(f"\n🔍 DIAGNÓSTICO FIBO:")
+    for alias in sorted(TODAS_LIDERES):
+        nombre = a_real(alias)
+        niveles = FIBO_NIVELES.get(nombre)
+        if not niveles:
+            print(f"   {nombre}: ❌ no está en FIBO_NIVELES")
+            continue
+
+        g = df[df["symbol"] == alias].sort_values("timestamp")
+        if len(g) < 40:
+            print(f"   {nombre}: ❌ pocos datos")
+            continue
+
+        ts_max = g["timestamp"].max()
+        edad = (datetime.now(timezone.utc) - ts_max).total_seconds() / 60
+        if edad > 60:
+            print(f"   {nombre}: ❌ datos viejos ({edad:.0f} min)")
+            continue
+
+        p_actual = float(g.iloc[-1]["price"])
+
+        for nivel_nombre, nivel_valor in [("0.618", niveles.get("fibo_618")),
+                                           ("0.786", niveles.get("fibo_786"))]:
+            if not nivel_valor or nivel_valor <= 0:
+                continue
+
+            dist = abs(p_actual - nivel_valor) / nivel_valor * 100
+            if dist <= 2.0:
+                print(f"   {nombre} — {nivel_nombre}: precio ${p_actual:.6f}, nivel ${nivel_valor:.6f}, dist {dist:.2f}%")
+    # === FIN DIAGNÓSTICO ===
+
     confirmaciones = []
     for alias in TODAS_LIDERES:
         r = detectar_lider_fibo(df, alias)
