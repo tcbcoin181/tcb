@@ -544,6 +544,90 @@ def main():
     btc = analizar_btc(df)
     print(f"\n🔍 {a_real(ALIAS_BTC)}: {btc['estado']} ({btc['cambio_1h']:+.2f}% 1h)")
 
+    # === DIAGNÓSTICO DE LÍDERES ===
+    print(f"\n🔍 DIAGNÓSTICO DE LÍDERES:")
+    print(f"   {'MONEDA':<8} | {'24h%':<8} | {'4h%':<8} | {'dist_min%':<10} | {'dist_max%':<10} | {'vol_ratio':<10} | {'rango_ratio':<11} | {'¿SUELO?':<8} | {'¿TECHO?':<8}")
+    print(f"   {'-'*100}")
+    
+    for alias in sorted(TODAS_LIDERES):
+        nombre = a_real(alias)
+        g = df[df["symbol"] == alias].sort_values("timestamp")
+        if len(g) < 40:
+            print(f"   {nombre:<8} | ❌ pocos datos")
+            continue
+        
+        ts_max = g["timestamp"].max()
+        edad = (datetime.now(timezone.utc) - ts_max).total_seconds() / 60
+        if edad > 30:
+            print(f"   {nombre:<8} | ❌ datos viejos ({edad:.0f} min)")
+            continue
+        
+        mc = g.iloc[-1].get("market_cap", 0) or 0
+        rank = g.iloc[-1].get("cmc_rank", 9999)
+        if not cumple_calidad(mc, rank):
+            print(f"   {nombre:<8} | ❌ calidad (MC={mc/1e6:.1f}M, rank={rank})")
+            continue
+        
+        corte_4h = ts_max - timedelta(hours=4)
+        corte_12h = ts_max - timedelta(hours=12)
+        corte_24h = ts_max - timedelta(hours=24)
+        rec_4h = g[g["timestamp"] >= corte_4h]
+        rec_12h = g[g["timestamp"] >= corte_12h]
+        rec_24h = g[g["timestamp"] >= corte_24h]
+        
+        if len(rec_4h) < 3 or len(rec_24h) < 5:
+            print(f"   {nombre:<8} | ❌ pocas velas (4h={len(rec_4h)}, 24h={len(rec_24h)})")
+            continue
+        
+        p_ini_24h = rec_24h.iloc[0]["price"]
+        p_actual = g.iloc[-1]["price"]
+        p_ini_4h = rec_4h.iloc[0]["price"]
+        if p_ini_24h <= 0 or p_ini_4h <= 0:
+            continue
+        
+        cambio_24h = ((p_actual - p_ini_24h) / p_ini_24h) * 100
+        cambio_4h = ((p_actual - p_ini_4h) / p_ini_4h) * 100
+        
+        p_min_24h = rec_24h["price"].min()
+        p_max_24h = rec_24h["price"].max()
+        dist_min = ((p_actual - p_min_24h) / p_min_24h) * 100 if p_min_24h > 0 else 999
+        dist_max = ((p_max_24h - p_actual) / p_max_24h) * 100 if p_max_24h > 0 else 999
+        
+        rec_12h_ant = rec_12h[rec_12h["timestamp"] < corte_4h]
+        if len(rec_12h_ant) < 3:
+            print(f"   {nombre:<8} | ❌ pocas velas 12h_ant")
+            continue
+        
+        v_reciente = rec_4h["volume_24h"].iloc[-1]
+        v_anterior = rec_12h_ant["volume_24h"].mean()
+        if v_anterior <= 0:
+            continue
+        compresion_vol = v_reciente / v_anterior
+        
+        rango_reciente = rec_4h["price"].max() - rec_4h["price"].min()
+        rango_anterior = (rec_12h_ant["price"].max() - rec_12h_ant["price"].min())
+        if rango_anterior <= 0:
+            continue
+        compresion_rango = rango_reciente / rango_anterior
+        
+        cumple_suelo_24h = cambio_24h <= SUELO_CAIDA_24H_MIN
+        cumple_suelo_4h = SUELO_FRENADO_LO <= cambio_4h <= SUELO_FRENADO_HI
+        cumple_suelo_dist = dist_min <= SUELO_DIST_MIN_MAX
+        cumple_suelo_vol = compresion_vol <= SUELO_VOL_DECRECIENTE
+        cumple_suelo_rango = compresion_rango <= SUELO_RANGO_COMPRESION
+        
+        cumple_techo_24h = cambio_24h >= TECHO_SUBIDA_24H_MIN
+        cumple_techo_4h = TECHO_FRENADO_LO <= cambio_4h <= TECHO_FRENADO_HI
+        cumple_techo_dist = dist_max <= TECHO_DIST_MAX_MAX
+        cumple_techo_vol = compresion_vol <= TECHO_VOL_DECRECIENTE
+        cumple_techo_rango = compresion_rango <= TECHO_RANGO_COMPRESION
+        
+        es_suelo = all([cumple_suelo_24h, cumple_suelo_4h, cumple_suelo_dist, cumple_suelo_vol, cumple_suelo_rango])
+        es_techo = all([cumple_techo_24h, cumple_techo_4h, cumple_techo_dist, cumple_techo_vol, cumple_techo_rango])
+        
+        print(f"   {nombre:<8} | {cambio_24h:>+7.2f}% | {cambio_4h:>+7.2f}% | {dist_min:>9.2f}% | {dist_max:>9.2f}% | {compresion_vol:>9.2f}x | {compresion_rango:>10.2f}x | {'✅ SÍ' if es_suelo else '❌ NO':<8} | {'✅ SÍ' if es_techo else '❌ NO':<8}")
+    # === FIN DIAGNÓSTICO ===
+
     alertas_state = cargar_alertas_state()
 
     print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes (suelos y techos)...")
