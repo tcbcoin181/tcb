@@ -423,6 +423,15 @@ def main():
     df = cargar_datos()
     print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
 
+    # === VERIFICACIÓN TEMPORAL ===
+    print(f"\n🔍 VERIFICACIÓN DE SÍMBOLOS:")
+    for alias in sorted(TODAS_LIDERES):
+        nombre = a_real(alias)
+        existe_alias = alias in df["symbol"].values
+        existe_nombre = nombre in df["symbol"].values
+        print(f"   {nombre} ({alias}): alias={existe_alias} | nombre={existe_nombre}")
+    # === FIN VERIFICACIÓN ===
+
     btc = analizar_btc(df)
     print(f"\n🔍 {a_real(ALIAS_BTC)}: {btc['estado']} ({btc['cambio_1h']:+.2f}% 1h)")
 
