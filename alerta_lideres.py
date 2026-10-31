@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ALERTA LÍDERES — Detección de techos/suelos en monedas clave
-
-Las monedas están definidas SOLO por alias. Los nombres reales
-están en el SECRETOS_JSON (nunca en el código).
+Usa la misma lógica del ARRANQUE de alerta_v6.py
 """
 
 import json
@@ -73,31 +71,34 @@ def a_real(alias):
 # GRUPOS DE MONEDAS LÍDERES (SOLO ALIAS)
 # ============================================================
 
-# Rápidas: BAT, CC, FUN, DOG
-GRUPO_RAPIDO  = {"xkr1", "xkq4", "xkr2", "xkr3"}
-
-# Lentas: W, CAP, BR, SKR
-GRUPO_LENTO   = {"xkv", "xkr4", "xkr5", "xkr6"}
-
-# Bimodales: BTW, HUMA, STONK
-GRUPO_BIMODAL = {"xkr7", "xkr8", "xkr9"}
-
+GRUPO_RAPIDO  = {"xkr1", "xkq4", "xkr2", "xkr3"}   # BAT, CC, FUN, DOG
+GRUPO_LENTO   = {"xkv", "xkr4", "xkr5", "xkr6"}    # W, CAP, BR, SKR
+GRUPO_BIMODAL = {"xkr7", "xkr8", "xkr9"}            # BTW, HUMA, STONK
 TODAS_LIDERES = GRUPO_RAPIDO | GRUPO_LENTO | GRUPO_BIMODAL
 
-# Alias de BTC (para contexto)
 ALIAS_BTC = "xk1"
 
-# Umbrales
-LIDER_CAMBIO_4H_MIN   = 1.0
-LIDER_CAMBIO_1H_MAX   = 0.3
-LIDER_VOL_MIN         = 1.2
-LIDER_DIST_MAX_MIN    = 0.5
-VOL_ABS_MIN           = 500_000
-COOLDOWN_LIDER        = 4
-MC_MIN                = 50_000_000
-MC_MAX                = 5_000_000_000
-RANK_MAX              = 300
-ALERTAS_STATE_FILE    = "alertas_lideres_state.json"
+# Umbrales del ARRANQUE (los mismos de alerta_v6.py)
+TEMPRANA_CAMBIO_1H  = 2.0
+TEMPRANA_VOL_MIN    = 1.2
+TEMPRANA_VOL_MAX    = 1.3
+
+FUERTE_CAMBIO_1H    = 3.0
+FUERTE_VOL_MIN      = 1.3
+
+VOL_ABS_MIN         = 500_000
+MAX_CAMBIO_4H       = 5.0
+MAX_CAMBIO_24H      = 15.0
+
+# Cooldowns
+COOLDOWN_LIDER      = 4
+
+# Filtros de calidad
+MC_MIN              = 50_000_000
+MC_MAX              = 5_000_000_000
+RANK_MAX            = 300
+
+ALERTAS_STATE_FILE  = "alertas_lideres_state.json"
 
 
 # ============================================================
@@ -125,6 +126,19 @@ def enviar_telegram(msg):
 # CARGA DE DATOS
 # ============================================================
 
+def normalizar_symbol(df, nombre_recolector):
+    if "symbol" not in df.columns:
+        return df
+    muestra = df["symbol"].astype(str).str.strip().str.upper().head(100)
+    es_alias = muestra.str.startswith("XK").mean() > 0.5
+    if es_alias:
+        print(f"   {nombre_recolector}: usa ALIAS")
+    else:
+        print(f"   {nombre_recolector}: usa NOMBRES REALES → traducidos a alias")
+        df["symbol"] = df["symbol"].astype(str).str.strip().str.upper().map(lambda s: a_alias(s))
+    return df
+
+
 def cargar_datos():
     dfs = []
     for nombre, url in RECOLECTORES_URLS.items():
@@ -136,11 +150,7 @@ def cargar_datos():
             r.raise_for_status()
             df = pd.read_csv(StringIO(r.text), low_memory=False)
             df["_fuente"] = nombre
-            if REAL_A_ALIAS and "symbol" in df.columns:
-                df["symbol"] = (
-                    df["symbol"].astype(str).str.strip().str.upper()
-                    .map(lambda s: a_alias(s))
-                )
+            df = normalizar_symbol(df, nombre)
             dfs.append(df)
             print(f"✅ {nombre}: {len(df):,} filas")
         except Exception as e:
@@ -227,19 +237,20 @@ def cumple_calidad(mc, rank):
 
 
 # ============================================================
-# DETECCIÓN DE LÍDER (techo/suelo en 5m)
+# DETECCIÓN — ARRANQUE (misma lógica de alerta_v6.py)
 # ============================================================
 
-def detectar_lider(df, alias):
+def detectar_arranque(df, alias):
     """
-    Detecta si una moneda líder tocó techo o suelo recientemente.
-    Usa velas de 5m para detectar el giro.
+    Detecta arranque (subida fuerte) en una moneda líder.
+    Usa la misma lógica de alerta_v6.py.
+    Devuelve dict con señal (FUERTE/TEMPRANA) o None.
     """
     if alias not in TODAS_LIDERES:
         return None
 
     g = df[df["symbol"] == alias].sort_values("timestamp")
-    if len(g) < 30:
+    if len(g) < 40:
         return None
 
     ts_max = g["timestamp"].max()
@@ -251,21 +262,18 @@ def detectar_lider(df, alias):
     if not cumple_calidad(mc, rank):
         return None
 
-    corte_30m = ts_max - timedelta(minutes=30)
-    rec_5m = (g[g["timestamp"] >= corte_30m]
-              .set_index("timestamp")["price"]
-              .resample("5min").last().dropna())
-    if len(rec_5m) < 4:
-        return None
-
+    # Cambio 1h
     corte_1h = ts_max - timedelta(hours=1)
     rec_1h = g[g["timestamp"] >= corte_1h]
     if len(rec_1h) < 3:
         return None
     p_ini_1h = rec_1h.iloc[0]["price"]
     p_fin = rec_1h.iloc[-1]["price"]
-    cambio_1h = ((p_fin - p_ini_1h) / p_ini_1h) * 100 if p_ini_1h > 0 else 0
+    if p_ini_1h <= 0:
+        return None
+    cambio_1h = ((p_fin - p_ini_1h) / p_ini_1h) * 100
 
+    # Cambio 4h
     corte_4h = ts_max - timedelta(hours=4)
     rec_4h = g[g["timestamp"] >= corte_4h]
     if len(rec_4h) < 3:
@@ -273,18 +281,37 @@ def detectar_lider(df, alias):
     p_ini_4h = rec_4h.iloc[0]["price"]
     cambio_4h = ((p_fin - p_ini_4h) / p_ini_4h) * 100 if p_ini_4h > 0 else 0
 
-    p_max_30m = rec_5m.max()
-    p_min_30m = rec_5m.min()
-    p_actual = rec_5m.iloc[-1]
-    dist_max = ((p_actual - p_max_30m) / p_max_30m) * 100 if p_max_30m > 0 else 0
-    dist_min = ((p_actual - p_min_30m) / p_min_30m) * 100 if p_min_30m > 0 else 0
+    # Cambio 24h
+    corte_24h = ts_max - timedelta(hours=24)
+    rec_24h = g[g["timestamp"] >= corte_24h]
+    p_ini_24h = rec_24h.iloc[0]["price"] if len(rec_24h) > 0 else p_ini_4h
+    cambio_24h = ((p_fin - p_ini_24h) / p_ini_24h) * 100 if p_ini_24h > 0 else 0
 
+    # Filtros de seguridad (evitar pumps ya pasados)
+    if cambio_4h > MAX_CAMBIO_4H:
+        return None
+    if cambio_24h > MAX_CAMBIO_24H:
+        return None
+
+    # Volumen
     v_base = g["volume_24h"].tail(20).mean()
     v_ult = g["volume_24h"].iloc[-1]
     vol_ratio = v_ult / v_base if v_base > 0 else 0
     if v_ult < VOL_ABS_MIN:
         return None
 
+    # Determinar señal (misma lógica de alerta_v6.py)
+    señal = None
+    if cambio_1h >= FUERTE_CAMBIO_1H and vol_ratio >= FUERTE_VOL_MIN:
+        señal = "FUERTE"
+    elif (cambio_1h >= TEMPRANA_CAMBIO_1H and
+          TEMPRANA_VOL_MIN <= vol_ratio < TEMPRANA_VOL_MAX):
+        señal = "TEMPRANA"
+
+    if señal is None:
+        return None
+
+    # Determinar grupo
     if alias in GRUPO_RAPIDO:
         grupo = "RAPIDA"
     elif alias in GRUPO_LENTO:
@@ -292,32 +319,15 @@ def detectar_lider(df, alias):
     else:
         grupo = "BIMODAL"
 
-    techo = False
-    if (cambio_4h > LIDER_CAMBIO_4H_MIN and
-        dist_max > -LIDER_DIST_MAX_MIN and
-        cambio_1h < LIDER_CAMBIO_1H_MAX and
-        vol_ratio > LIDER_VOL_MIN):
-        techo = True
-
-    suelo = False
-    if (cambio_4h < -LIDER_CAMBIO_4H_MIN and
-        dist_min < LIDER_DIST_MAX_MIN and
-        cambio_1h > -LIDER_CAMBIO_1H_MAX and
-        vol_ratio > LIDER_VOL_MIN):
-        suelo = True
-
-    if not (techo or suelo):
-        return None
-
     return {
-        "tipo": "TECHO" if techo else "SUELO",
+        "tipo": "ARRANQUE",
+        "señal": señal,
         "symbol": alias,
         "grupo": grupo,
-        "precio": p_actual,
+        "precio": p_fin,
         "cambio_1h": cambio_1h,
         "cambio_4h": cambio_4h,
-        "dist_max_30m": dist_max,
-        "dist_min_30m": dist_min,
+        "cambio_24h": cambio_24h,
         "vol_ratio": vol_ratio,
         "vol_m": v_ult / 1e6,
         "cmc_rank": int(rank),
@@ -327,58 +337,55 @@ def detectar_lider(df, alias):
 
 
 # ============================================================
-# ALERTA DE LÍDERES (combinada)
+# ALERTA DE LÍDERES
 # ============================================================
 
 def enviar_alerta_lideres(lideres, btc):
-    """Envía una alerta combinada de todos los líderes detectados."""
     if not lideres:
         return False
 
+    # Contar por grupo
     conteo = {
-        "RAPIDA_TECHO": 0, "RAPIDA_SUELO": 0,
-        "LENTA_TECHO": 0, "LENTA_SUELO": 0,
-        "BIMODAL_TECHO": 0, "BIMODAL_SUELO": 0,
+        "RAPIDA": 0, "LENTA": 0, "BIMODAL": 0,
     }
+    fuertes = 0
+    tempranas = 0
     for a in lideres:
-        clave = f"{a['grupo']}_{a['tipo']}"
-        if clave in conteo:
-            conteo[clave] += 1
+        conteo[a["grupo"]] += 1
+        if a["señal"] == "FUERTE":
+            fuertes += 1
+        else:
+            tempranas += 1
 
-    total_techo = conteo["RAPIDA_TECHO"] + conteo["LENTA_TECHO"] + conteo["BIMODAL_TECHO"]
-    total_suelo = conteo["RAPIDA_SUELO"] + conteo["LENTA_SUELO"] + conteo["BIMODAL_SUELO"]
+    total = len(lideres)
 
-    msg = "📡 *MONEDAS LÍDERES*\n━━━━━━━━━━━━━━━━━━━\n"
+    msg = "📡 *MONEDAS LÍDERES — ARRANQUE*\n━━━━━━━━━━━━━━━━━━━\n"
 
-    if total_techo >= 3:
-        msg += f"🚨 *SEÑAL EXTREMA*: {total_techo} líderes tocaron TECHO\n"
-    elif conteo["RAPIDA_TECHO"] >= 2:
-        msg += f"⚠️ *SEÑAL FUERTE*: {conteo['RAPIDA_TECHO']} rápidas tocaron TECHO → BTC cae en 1-3h\n"
-    elif conteo["LENTA_TECHO"] >= 2:
-        msg += f"⚠️ *SEÑAL FUERTE*: {conteo['LENTA_TECHO']} lentas tocaron TECHO → BTC cae en 4-6h\n"
+    if fuertes >= 2:
+        msg += f"🚨 *SEÑAL FUERTE*: {fuertes} líderes con ARRANQUE FUERTE\n"
+    elif fuertes == 1:
+        msg += f"⚠️ *SEÑAL MEDIA*: 1 líder con ARRANQUE FUERTE\n"
 
-    if total_suelo >= 3:
-        msg += f"🚨 *SEÑAL EXTREMA*: {total_suelo} líderes tocaron SUELO\n"
-    elif conteo["RAPIDA_SUELO"] >= 2:
-        msg += f"⚠️ *SEÑAL FUERTE*: {conteo['RAPIDA_SUELO']} rápidas tocaron SUELO → BTC sube en 1-3h\n"
-    elif conteo["LENTA_SUELO"] >= 2:
-        msg += f"⚠️ *SEÑAL FUERTE*: {conteo['LENTA_SUELO']} lentas tocaron SUELO → BTC sube en 4-6h\n"
+    if tempranas >= 2:
+        msg += f"🟡 *SEÑAL TEMPRANA*: {tempranas} líderes con ARRANQUE TEMPRANO\n"
 
-    msg += "\n"
+    msg += f"\n📊 Total: {total} líderes detectados\n"
+    msg += f"   Rápidas: {conteo['RAPIDA']} | Lentas: {conteo['LENTA']} | Bimodales: {conteo['BIMODAL']}\n\n"
+
     for a in lideres[:10]:
-        emoji = "🔺" if a["tipo"] == "TECHO" else "🔻"
-        msg += f"{emoji} {a_real(a['symbol'])} ({a['grupo']}) — {a['tipo']}\n"
-        msg += f"   Cambio 1h: {a['cambio_1h']:+.2f}% | 4h: {a['cambio_4h']:+.2f}%\n"
+        emoji = "🚨" if a["señal"] == "FUERTE" else "🟡"
+        msg += f"{emoji} {a_real(a['symbol'])} ({a['grupo']}) — {a['señal']}\n"
+        msg += f"   +{a['cambio_1h']:.2f}% en 1h | 4h: {a['cambio_4h']:+.2f}%\n"
         msg += f"   Precio: ${a['precio']:.6f} | Vol: {a['vol_ratio']:.2f}x\n\n"
 
     if btc:
-        msg += f"⚪ {a_real(ALIAS_BTC)}: {btc.get('estado', 'UNKNOWN')} ({btc.get('cambio_1h', 0):+.2f}% 1h)\n"
+        msg += f"⚪ BTC: {btc.get('estado', 'UNKNOWN')} ({btc.get('cambio_1h', 0):+.2f}% 1h)\n"
 
     return enviar_telegram(msg)
 
 
 # ============================================================
-# ANÁLISIS BTC (simplificado, solo alias)
+# ANÁLISIS BTC
 # ============================================================
 
 def analizar_btc(df):
@@ -423,15 +430,6 @@ def main():
     df = cargar_datos()
     print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
 
-    # === VERIFICACIÓN TEMPORAL ===
-    print(f"\n🔍 VERIFICACIÓN DE SÍMBOLOS:")
-    for alias in sorted(TODAS_LIDERES):
-        nombre = a_real(alias)
-        existe_alias = alias in df["symbol"].values
-        existe_nombre = nombre in df["symbol"].values
-        print(f"   {nombre} ({alias}): alias={existe_alias} | nombre={existe_nombre}")
-    # === FIN VERIFICACIÓN ===
-
     btc = analizar_btc(df)
     print(f"\n🔍 {a_real(ALIAS_BTC)}: {btc['estado']} ({btc['cambio_1h']:+.2f}% 1h)")
 
@@ -440,7 +438,7 @@ def main():
     print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes...")
     lideres = []
     for alias in TODAS_LIDERES:
-        r = detectar_lider(df, alias)
+        r = detectar_arranque(df, alias)
         if r:
             if not paso_cooldown(alertas_state, r["symbol"], "LIDER", COOLDOWN_LIDER):
                 print(f"   ⏳ {a_real(r['symbol'])} en cooldown")
@@ -448,9 +446,9 @@ def main():
             lideres.append(r)
 
     if lideres:
-        print(f"   🔺🔻 {len(lideres)} líderes detectados:")
+        print(f"   🔺 {len(lideres)} líderes con arranque detectado:")
         for a in lideres:
-            print(f"      {a_real(a['symbol'])} ({a['grupo']}) — {a['tipo']}")
+            print(f"      {a_real(a['symbol'])} ({a['grupo']}) — {a['señal']} (+{a['cambio_1h']:.2f}%)")
 
         if enviar_alerta_lideres(lideres, btc):
             print(f"   📱 Alerta enviada")
