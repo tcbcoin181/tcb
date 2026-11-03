@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-LÍDERES — F + 5 
+ALERTA LÍDERES — FIBONACCI + 5 VELAS VERDES
 
-1. F confirmación L (monedas líderes)
-2. 5 v  (todas las monedas que funcionan)
+1. Fibonacci confirmación LONG (monedas líderes)
+2. 5 velas verdes después de suelo (monedas que funcionan)
 """
 
 import json
@@ -488,6 +488,39 @@ def confirmar_long_en_nivel_fibo(df, symbol, nivel_valor):
     }
 
 
+def detectar_lider_fibo(df, alias):
+    """Detecta confirmación LONG en niveles Fibonacci para una líder."""
+    if alias not in TODAS_LIDERES:
+        return None
+
+    nombre_real = a_real(alias)
+    niveles = FIBO_NIVELES.get(nombre_real)
+    if not niveles:
+        return None
+
+    for nombre_nivel, valor in [("0.618", niveles.get("fibo_618")),
+                                 ("0.786", niveles.get("fibo_786"))]:
+        if not valor or valor <= 0:
+            continue
+
+        conf = confirmar_long_en_nivel_fibo(df, alias, valor)
+        if conf:
+            conf["nivel"] = nombre_nivel
+            if alias in GRUPO_RAPIDO:
+                conf["grupo"] = "RAPIDA"
+            elif alias in GRUPO_LENTO:
+                conf["grupo"] = "LENTA"
+            else:
+                conf["grupo"] = "BIMODAL"
+            return conf
+
+    return None
+
+
+# ============================================================
+# 5 VELAS VERDES — DETECCIÓN
+# ============================================================
+
 def detectar_5_velas_verdes(df, alias):
     if alias not in MONEDAS_5_VELAS:
         return None
@@ -550,7 +583,7 @@ def detectar_5_velas_verdes(df, alias):
     subida_desde_rebote = (precio_max - precio_rebote) / precio_rebote * 100
     drawdown = (precio_min - precio_rebote) / precio_rebote * 100
 
-    # === FILTROS (AÑADIR AQUÍ) ===
+    # === FILTROS ===
     if subida_desde_rebote < 1.0:
         return None
     if drawdown < -1.0:
