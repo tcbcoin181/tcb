@@ -488,38 +488,6 @@ def confirmar_long_en_nivel_fibo(df, symbol, nivel_valor):
     }
 
 
-def detectar_lider_fibo(df, alias):
-    if alias not in TODAS_LIDERES:
-        return None
-
-    nombre_real = a_real(alias)
-    niveles = FIBO_NIVELES.get(nombre_real)
-    if not niveles:
-        return None
-
-    for nombre_nivel, valor in [("0.618", niveles.get("fibo_618")),
-                                 ("0.786", niveles.get("fibo_786"))]:
-        if not valor or valor <= 0:
-            continue
-
-        conf = confirmar_long_en_nivel_fibo(df, alias, valor)
-        if conf:
-            conf["nivel"] = nombre_nivel
-            if alias in GRUPO_RAPIDO:
-                conf["grupo"] = "RAPIDA"
-            elif alias in GRUPO_LENTO:
-                conf["grupo"] = "LENTA"
-            else:
-                conf["grupo"] = "BIMODAL"
-            return conf
-
-    return None
-
-
-# ============================================================
-# 5 VELAS VERDES — DETECCIÓN
-# ============================================================
-
 def detectar_5_velas_verdes(df, alias):
     if alias not in MONEDAS_5_VELAS:
         return None
@@ -540,42 +508,34 @@ def detectar_5_velas_verdes(df, alias):
     velas_5m = (g.set_index("timestamp")["price"]
                 .resample("5min").last().dropna())
 
-    if len(velas_5m) < 50:
+    if len(velas_5m) < 20:
         return None
 
-    ventana_suelo = velas_5m.iloc[-50:]
+    # === VERIFICAR QUE LAS ÚLTIMAS 5 VELAS SEAN VERDES ===
+    ultimas_5 = velas_5m.iloc[-5:]
+    if len(ultimas_5) < 5:
+        return None
+
+    subidas = 0
+    for j in range(1, len(ultimas_5)):
+        if ultimas_5.iloc[j] > ultimas_5.iloc[j-1]:
+            subidas += 1
+
+    if subidas < 4:
+        return None
+
+    # === VERIFICAR SUELO RECIENTE ===
+    ventana_suelo = velas_5m.iloc[-30:]
     p_min = ventana_suelo.min()
     idx_min = ventana_suelo.idxmin()
     idx_min_pos = velas_5m.index.get_loc(idx_min)
 
-    if idx_min_pos < len(velas_5m) - 30:
+    if idx_min_pos >= len(velas_5m) - 5:
         return None
 
-    encontrado = False
-    fecha_rebote = None
-    precio_rebote = None
-
-    for i in range(1, VELAS_VERDES_VENTANA + 1):
-        if idx_min_pos + i + VELAS_VERDES_N > len(velas_5m):
-            break
-
-        ventana = velas_5m.iloc[idx_min_pos + i: idx_min_pos + i + VELAS_VERDES_N]
-        if len(ventana) < VELAS_VERDES_N:
-            continue
-
-        subidas = 0
-        for j in range(1, len(ventana)):
-            if ventana.iloc[j] > ventana.iloc[j-1]:
-                subidas += 1
-
-        if subidas >= VELAS_VERDES_N - 1:
-            fecha_rebote = ventana.index[-1]
-            precio_rebote = ventana.iloc[-1]
-            encontrado = True
-            break
-
-    if not encontrado:
-        return None
+    # === CALCULAR RESULTADO ===
+    precio_rebote = ultimas_5.iloc[-1]
+    fecha_rebote = ultimas_5.index[-1]
 
     idx_rebote = velas_5m.index.get_loc(fecha_rebote)
     idx_fin = min(idx_rebote + VELAS_VERDES_RESULTADO, len(velas_5m) - 1)
@@ -589,6 +549,13 @@ def detectar_5_velas_verdes(df, alias):
 
     subida_desde_rebote = (precio_max - precio_rebote) / precio_rebote * 100
     drawdown = (precio_min - precio_rebote) / precio_rebote * 100
+
+    # === FILTROS (AÑADIR AQUÍ) ===
+    if subida_desde_rebote < 1.0:
+        return None
+    if drawdown < -1.0:
+        return None
+    # === FIN FILTROS ===
 
     return {
         "symbol": alias,
