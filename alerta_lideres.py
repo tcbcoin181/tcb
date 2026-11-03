@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ALERTA LÍDERES — SOLO FIBONACCI CONFIRMACIÓN LONG
+LÍDERES — F + 5 
 
-Detecta cuando una moneda líder toca 0.618 o 0.786 y rebota (confirmación LONG).
-Usa los niveles de FIBO_NIVELES (secreto).
+1. F confirmación L (monedas líderes)
+2. 5 v  (todas las monedas que funcionan)
 """
 
 import json
@@ -84,13 +84,154 @@ def a_real(alias):
 
 
 # ============================================================
-# GRUPOS DE MONEDAS LÍDERES (SOLO ALIAS)
+# GRUPOS DE MONEDAS
 # ============================================================
 
+# Líderes (Fibonacci)
 GRUPO_RAPIDO  = {"xkr1", "xkq4", "xkr2", "xkr3"}   # BAT, CC, FUN, DOG
 GRUPO_LENTO   = {"xkv", "xkr4", "xkr5", "xkr6"}    # W, CAP, BR, SKR
 GRUPO_BIMODAL = {"xkr7", "xkr8", "xkr9"}            # BTW, HUMA, STONK
 TODAS_LIDERES = GRUPO_RAPIDO | GRUPO_LENTO | GRUPO_BIMODAL
+
+# Monedas que funcionan con 5 velas verdes (134 monedas)
+MONEDAS_5_VELAS = {
+    # Originales del JSON
+    "xky",    # AGT
+    "xkq1",   # Q
+    "xkq9",   # SUPER
+    "xkq6",   # FTT
+    "xkt",    # EIGEN
+    "xku",    # ETHFI
+    "xka",    # PEPE
+    "xkb",    # BONK
+    "xkZ",    # WIF
+    "xkD",    # SHIB
+    "xkF",    # BCH
+    "xkA",    # LINK
+    "xk5",    # XRP
+    "xk4",    # BNB
+    "xk9",    # DOT
+    "xkj",    # AAVE
+    "xkn",    # COMP
+    "xkE",    # LTC
+    "xkG",    # TRX
+    "xk6",    # ADA
+    "xk8",    # AVAX
+    "xkR",    # SUI
+    "xkL",    # NEAR
+    "xkM",    # APT
+    "xkN",    # FIL
+    "xkQ",    # INJ
+    "xkT",    # TIA
+    "xkV",    # STRK
+    "xkW",    # ONDO
+    "xkX",    # JUP
+    "xkY",    # ENA
+    "xke",    # FET
+    "xkf",    # IMX
+    "xki",    # GRT
+    "xkl",    # CRV
+    "xkm",    # SNX
+    "xkp",    # 1INCH
+    "xkr",    # LDO
+    "xkv",    # W
+    "xk0",    # LIT
+    "xkq3",   # SOON
+    "xkq4",   # CC
+    "xkqe",   # SYRUP
+    "xkqf",   # RAY
+    "xkqg",   # MET
+    # Nuevas (del JSON ampliado)
+    "xkr1",   # BAT
+    "xkr5",   # BR
+    "xkr9",   # STONK
+    "xkr10",  # RAIN
+    "xkr11",  # TIBBIR
+    "xkr12",  # TAG
+    "xkr14",  # SOXLB
+    "xkr15",  # VVV
+    "xkr16",  # GENIUS
+    "xkr17",  # ZEC
+    "xkr18",  # MAGMA
+    "xkr19",  # KNTQ
+    "xkr20",  # M
+    "xkr21",  # COW
+    "xkr22",  # PREDICT
+    "xkr23",  # RSR
+    "xkr24",  # TEL
+    "xkr25",  # NPC
+    "xkr26",  # PENDLE
+    "xkr27",  # JASMY
+    "xkr28",  # ORDI
+    "xkr29",  # ALT
+    "xkr30",  # SKY
+    "xkr31",  # UB
+    "xkr32",  # ZRO
+    "xkr33",  # FLOKI
+    "xkr34",  # POL
+    "xkr35",  # DIEM
+    "xkr36",  # ZAMA
+    "xkr37",  # LUNC
+    "xkr38",  # EDGE
+    "xkr39",  # RUNE
+    "xkr40",  # SN51
+    "xkr41",  # 币安人生
+    "xkr42",  # FLUID
+    "xkr43",  # NIGHT
+    "xkr44",  # TRUMP
+    "xkr45",  # MNT
+    "xkr46",  # STX
+    "xkr47",  # PLUME
+    "xkr48",  # DEEP
+    "xkr49",  # ZETA
+    "xkr50",  # AXS
+    "xkr51",  # NMR
+    "xkr52",  # PEARL
+    "xkr53",  # PROM
+    "xkr54",  # BABY
+    "xkr55",  # BDX
+    "xkr56",  # BOME
+    "xkr57",  # GALA
+    "xkr58",  # MANA
+    "xkr59",  # TWT
+    "xkr60",  # AXL
+    "xkr61",  # WEMIX
+    "xkr62",  # KMNO
+    "xkr63",  # KAIA
+    "xkr64",  # CARDS
+    "xkr65",  # HBAR
+    "xkr66",  # WIN
+    "xkr67",  # MSTRB
+    "xkr68",  # EGLD
+    "xkr69",  # MSTRX
+    "xkr70",  # VIRTUAL
+    "xkr71",  # NFT
+    "xkr72",  # BEAM
+    "xkr73",  # ASTER
+    "xkr74",  # CHZ
+    "xkr75",  # ZK
+    "xkr76",  # KITE
+    "xkr77",  # CVX
+    "xkr78",  # RED
+    "xkr79",  # IOTA
+    "xkr80",  # ICP
+    "xkr81",  # APE
+    "xkr82",  # GRASS
+    "xkr83",  # FLR
+    "xkr84",  # CATE
+    "xkr85",  # MX
+    "xkr86",  # A
+    "xkr87",  # CT
+    "xkr88",  # GMX
+    "xkr89",  # SUN
+    "xkr90",  # CFX
+    "xkr91",  # JST
+    "xkr92",  # GAS
+    "xkr93",  # JSM
+    "xkr94",  # AWE
+    "xkr95",  # SLX
+    "xkr96",  # APEPE
+}
 
 ALIAS_BTC = "xk1"
 
@@ -106,6 +247,15 @@ FIBO_MAX_CIERRES = 0.30
 FIBO_N_CONSEC    = 2
 
 COOLDOWN_FIBO    = 4
+
+# ============================================================
+# UMBRALES — 5 VELAS VERDES
+# ============================================================
+
+VELAS_VERDES_N          = 5
+VELAS_VERDES_VENTANA    = 15
+VELAS_VERDES_RESULTADO  = 30
+COOLDOWN_5_VELAS        = 2
 
 MC_MIN           = 50_000_000
 MC_MAX           = 5_000_000_000
@@ -250,7 +400,7 @@ def cumple_calidad(mc, rank):
 
 
 # ============================================================
-# FIBONACCI — confirmación LONG (del alerta_v6.py)
+# FIBONACCI — confirmación LONG
 # ============================================================
 
 def _velas_5m_fibo(df, symbol, ts_desde, ts_hasta):
@@ -339,7 +489,6 @@ def confirmar_long_en_nivel_fibo(df, symbol, nivel_valor):
 
 
 def detectar_lider_fibo(df, alias):
-    """Detecta confirmación LONG en niveles Fibonacci para una líder."""
     if alias not in TODAS_LIDERES:
         return None
 
@@ -368,7 +517,96 @@ def detectar_lider_fibo(df, alias):
 
 
 # ============================================================
-# ALERTA FIBONACCI
+# 5 VELAS VERDES — DETECCIÓN
+# ============================================================
+
+def detectar_5_velas_verdes(df, alias):
+    if alias not in MONEDAS_5_VELAS:
+        return None
+
+    g = df[df["symbol"] == alias].sort_values("timestamp")
+    if len(g) < 50:
+        return None
+
+    ts_max = g["timestamp"].max()
+    if not es_fresco(ts_max, minutos=30):
+        return None
+
+    mc = g.iloc[-1].get("market_cap", 0) or 0
+    rank = g.iloc[-1].get("cmc_rank", 9999)
+    if not cumple_calidad(mc, rank):
+        return None
+
+    velas_5m = (g.set_index("timestamp")["price"]
+                .resample("5min").last().dropna())
+
+    if len(velas_5m) < 50:
+        return None
+
+    ventana_suelo = velas_5m.iloc[-50:]
+    p_min = ventana_suelo.min()
+    idx_min = ventana_suelo.idxmin()
+    idx_min_pos = velas_5m.index.get_loc(idx_min)
+
+    if idx_min_pos < len(velas_5m) - 30:
+        return None
+
+    encontrado = False
+    fecha_rebote = None
+    precio_rebote = None
+
+    for i in range(1, VELAS_VERDES_VENTANA + 1):
+        if idx_min_pos + i + VELAS_VERDES_N > len(velas_5m):
+            break
+
+        ventana = velas_5m.iloc[idx_min_pos + i: idx_min_pos + i + VELAS_VERDES_N]
+        if len(ventana) < VELAS_VERDES_N:
+            continue
+
+        subidas = 0
+        for j in range(1, len(ventana)):
+            if ventana.iloc[j] > ventana.iloc[j-1]:
+                subidas += 1
+
+        if subidas >= VELAS_VERDES_N - 1:
+            fecha_rebote = ventana.index[-1]
+            precio_rebote = ventana.iloc[-1]
+            encontrado = True
+            break
+
+    if not encontrado:
+        return None
+
+    idx_rebote = velas_5m.index.get_loc(fecha_rebote)
+    idx_fin = min(idx_rebote + VELAS_VERDES_RESULTADO, len(velas_5m) - 1)
+
+    if idx_fin <= idx_rebote:
+        return None
+
+    serie_ventana = velas_5m.iloc[idx_rebote:idx_fin + 1]
+    precio_max = serie_ventana.max()
+    precio_min = serie_ventana.min()
+
+    subida_desde_rebote = (precio_max - precio_rebote) / precio_rebote * 100
+    drawdown = (precio_min - precio_rebote) / precio_rebote * 100
+
+    return {
+        "symbol": alias,
+        "tipo": "5_VELAS_VERDES",
+        "precio_suelo": p_min,
+        "fecha_suelo": idx_min,
+        "precio_rebote": precio_rebote,
+        "fecha_rebote": fecha_rebote,
+        "subida_desde_rebote": subida_desde_rebote,
+        "drawdown": drawdown,
+        "precio_actual": float(g.iloc[-1]["price"]),
+        "mc_m": mc / 1e6,
+        "rank": int(rank),
+    }
+
+
+# ============================================================
+# ALERTAS
 # ============================================================
 
 def enviar_alerta_fibo(confirmaciones, btc):
@@ -385,9 +623,30 @@ def enviar_alerta_fibo(confirmaciones, btc):
         msg += f"   Precio: ${a['precio']:.6f}\n"
         msg += f"   Nivel:  ${a['nivel_valor']:.6f}\n"
         msg += f"   Rebote: +{a['rebote_pct']:.2f}% (máx +{a['rebote_max_pct']:.2f}%)\n"
-        msg += f"   Velas OK: {a['velas_consecutivas_ok']} consecutivas "
-        msg += f"(bajo nivel: {a['velas_bajo_nivel']}/{a['velas_5m_total']})\n"
+        msg += f"   Velas OK: {a['velas_consecutivas_ok']} consecutivas\n"
         msg += f"   Toque: {hora_toque} Lima\n\n"
+
+    msg += "🚀 *Entrada LONG confirmada*"
+    if btc:
+        msg += f"\n⚪ BTC: {btc.get('estado', 'UNKNOWN')}"
+
+    return enviar_telegram(msg)
+
+
+def enviar_alerta_5_velas(alertas, btc):
+    if not alertas:
+        return False
+
+    msg = "🟢 *5 VELAS VERDES DESPUÉS DE SUELO*\n"
+    msg += "━━━━━━━━━━━━━━━━━━━\n"
+
+    for a in alertas:
+        hora_rebote = (a["fecha_rebote"] - timedelta(hours=5)).strftime("%H:%M")
+        msg += f"🟢 *{a_real(a['symbol'])}*\n"
+        msg += f"   Suelo: ${a['precio_suelo']:.6f} ({a['fecha_suelo'].strftime('%H:%M')})\n"
+        msg += f"   Rebote: ${a['precio_rebote']:.6f} ({hora_rebote})\n"
+        msg += f"   Subida esperada: +{a['subida_desde_rebote']:.2f}%\n"
+        msg += f"   Drawdown: {a['drawdown']:.2f}%\n\n"
 
     msg += "🚀 *Entrada LONG confirmada*"
     if btc:
@@ -440,10 +699,7 @@ def main():
     print(f"{'='*60}")
 
     if not FIBO_NIVELES:
-        print("❌ FIBO_NIVELES no está configurado. Saliendo.")
-        return
-
-    print(f"✅ FIBO_NIVELES cargados: {len(FIBO_NIVELES)} monedas")
+        print("⚠️ FIBO_NIVELES no configurado. Solo se analizarán 5 velas verdes.")
 
     df = cargar_datos()
     print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
@@ -453,60 +709,56 @@ def main():
 
     alertas_state = cargar_alertas_state()
 
-    print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes (Fibonacci)...")
+    # ============================================================
+    # FIBONACCI
+    # ============================================================
+    if FIBO_NIVELES:
+        print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes (Fibonacci)...")
+        confirmaciones = []
+        for alias in TODAS_LIDERES:
+            r = detectar_lider_fibo(df, alias)
+            if r:
+                if not paso_cooldown(alertas_state, r["symbol"], "FIBO", COOLDOWN_FIBO):
+                    print(f"   ⏳ {a_real(alias)} en cooldown")
+                    continue
+                confirmaciones.append(r)
+                print(f"   ✅ FIBO {r['nivel']}: {a_real(alias)} ({r['grupo']}) — rebote +{r['rebote_pct']:.2f}%")
 
-    # === DIAGNÓSTICO FIBO (AÑADIR AQUÍ) ===
-    print(f"\n🔍 DIAGNÓSTICO FIBO:")
-    for alias in sorted(TODAS_LIDERES):
-        nombre = a_real(alias)
-        niveles = FIBO_NIVELES.get(nombre)
-        if not niveles:
-            print(f"   {nombre}: ❌ no está en FIBO_NIVELES")
-            continue
+        if confirmaciones:
+            if enviar_alerta_fibo(confirmaciones, btc):
+                print(f"   📱 Alerta FIBO enviada")
+                for a in confirmaciones:
+                    registrar_alerta(alertas_state, a["symbol"], "FIBO")
+                guardar_alertas_state(alertas_state)
+            else:
+                print(f"   ⚠️ No se pudo enviar la alerta FIBO")
+        else:
+            print("   ⚪ Sin confirmaciones Fibonacci.")
 
-        g = df[df["symbol"] == alias].sort_values("timestamp")
-        if len(g) < 40:
-            print(f"   {nombre}: ❌ pocos datos")
-            continue
-
-        ts_max = g["timestamp"].max()
-        edad = (datetime.now(timezone.utc) - ts_max).total_seconds() / 60
-        if edad > 60:
-            print(f"   {nombre}: ❌ datos viejos ({edad:.0f} min)")
-            continue
-
-        p_actual = float(g.iloc[-1]["price"])
-
-        for nivel_nombre, nivel_valor in [("0.618", niveles.get("fibo_618")),
-                                           ("0.786", niveles.get("fibo_786"))]:
-            if not nivel_valor or nivel_valor <= 0:
-                continue
-
-            dist = abs(p_actual - nivel_valor) / nivel_valor * 100
-            if dist <= 2.0:
-                print(f"   {nombre} — {nivel_nombre}: precio ${p_actual:.6f}, nivel ${nivel_valor:.6f}, dist {dist:.2f}%")
-    # === FIN DIAGNÓSTICO ===
-
-    confirmaciones = []
-    for alias in TODAS_LIDERES:
-        r = detectar_lider_fibo(df, alias)
+    # ============================================================
+    # 5 VELAS VERDES
+    # ============================================================
+    print(f"\n📡 Escaneando {len(MONEDAS_5_VELAS)} monedas (5 velas verdes)...")
+    alertas_5v = []
+    for alias in MONEDAS_5_VELAS:
+        r = detectar_5_velas_verdes(df, alias)
         if r:
-            if not paso_cooldown(alertas_state, r["symbol"], "FIBO", COOLDOWN_FIBO):
+            if not paso_cooldown(alertas_state, r["symbol"], "5_VELAS", COOLDOWN_5_VELAS):
                 print(f"   ⏳ {a_real(alias)} en cooldown")
                 continue
-            confirmaciones.append(r)
-            print(f"   ✅ FIBO {r['nivel']}: {a_real(alias)} ({r['grupo']}) — rebote +{r['rebote_pct']:.2f}%")
+            alertas_5v.append(r)
+            print(f"   🟢 5 VELAS: {a_real(alias)} — subida +{r['subida_desde_rebote']:.2f}%")
 
-    if confirmaciones:
-        if enviar_alerta_fibo(confirmaciones, btc):
-            print(f"   📱 Alerta FIBO enviada")
-            for a in confirmaciones:
-                registrar_alerta(alertas_state, a["symbol"], "FIBO")
+    if alertas_5v:
+        if enviar_alerta_5_velas(alertas_5v, btc):
+            print(f"   📱 Alerta 5 velas enviada")
+            for a in alertas_5v:
+                registrar_alerta(alertas_state, a["symbol"], "5_VELAS")
             guardar_alertas_state(alertas_state)
         else:
-            print(f"   ⚠️ No se pudo enviar la alerta")
+            print(f"   ⚠️ No se pudo enviar la alerta 5 velas")
     else:
-        print("   ⚪ Sin confirmaciones Fibonacci.")
+        print("   ⚪ Sin alertas de 5 velas verdes.")
 
     print(f"\n✅ Análisis completado.")
 
