@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-ALERTA L — F + 5 V + O i
-
-1. FLONG (monedas líderes)
-2. 5v minimo 3
-3. Oportunidad individual (v r + caída + rebote)
-"""
 
 import json
 import os
@@ -17,10 +10,6 @@ from io import StringIO
 import pandas as pd
 import requests
 
-
-# ============================================================
-# CARGAR SECRETOS
-# ============================================================
 
 def _cargar_secretos():
     data = {}
@@ -84,17 +73,11 @@ def a_real(alias):
     return ALIAS_A_REAL.get(str(alias).strip(), str(alias).strip())
 
 
-# ============================================================
-# GRUPOS DE MONEDAS
-# ============================================================
-
-# Líderes (Fibonacci)
 GRUPO_RAPIDO  = {"xkr1", "xkq4", "xkr2", "xkr3"}
 GRUPO_LENTO   = {"xkv", "xkr4", "xkr5", "xkr6"}
 GRUPO_BIMODAL = {"xkr7", "xkr8", "xkr9"}
 TODAS_LIDERES = GRUPO_RAPIDO | GRUPO_LENTO | GRUPO_BIMODAL
 
-# Monedas que funcionan con 5 velas verdes (134 monedas)
 MONEDAS_5_VELAS = {
     "xky", "xkq1", "xkq9", "xkq6", "xkt", "xku", "xka", "xkb", "xkZ",
     "xkD", "xkF", "xkA", "xk5", "xk4", "xk9", "xkj", "xkn", "xkE",
@@ -118,10 +101,6 @@ MONEDAS_5_VELAS = {
 
 ALIAS_BTC = "xk1"
 
-# ============================================================
-# UMBRALES — FIBONACCI
-# ============================================================
-
 FIBO_TOL_TOQUE   = 1.5
 FIBO_VENTANA_H   = 4
 FIBO_REBOTE_MIN  = 1.5
@@ -131,24 +110,14 @@ FIBO_N_CONSEC    = 2
 
 COOLDOWN_FIBO    = 4
 
-# ============================================================
-# UMBRALES — 5 VELAS VERDES (GRUPAL)
-# ============================================================
+VENTANA_GRUPAL_MIN = 15
+SUBIDA_GRUPAL_MIN  = 1.0
+MIN_MONEDAS_GRUPAL = 3
 
-VELAS_VERDES_N          = 5
-VELAS_VERDES_VENTANA    = 15
-VELAS_VERDES_RESULTADO  = 30
-COOLDOWN_5_VELAS        = 2
-MIN_MONEDAS_GRUPAL      = 3
-
-# ============================================================
-# UMBRALES — OPORTUNIDAD INDIVIDUAL
-# ============================================================
-
-ROJAS_MIN               = 2
-ROJAS_MAX               = 5
-CAIDA_MIN               = 4.0
-COOLDOWN_INDIVIDUAL     = 2
+ROJAS_MIN           = 2
+ROJAS_MAX           = 5
+CAIDA_MIN           = 4.0
+COOLDOWN_INDIVIDUAL = 2
 
 MC_MIN           = 50_000_000
 MC_MAX           = 5_000_000_000
@@ -156,10 +125,6 @@ RANK_MAX         = 300
 
 ALERTAS_STATE_FILE = "alertas_lideres_state.json"
 
-
-# ============================================================
-# TELEGRAM
-# ============================================================
 
 def enviar_telegram(msg):
     token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -177,10 +142,6 @@ def enviar_telegram(msg):
             print(f"Error Telegram (intento {intento+1}): {e}")
     return False
 
-
-# ============================================================
-# CARGA DE DATOS
-# ============================================================
 
 def normalizar_symbol(df, nombre_recolector):
     if "symbol" not in df.columns:
@@ -231,10 +192,6 @@ def cargar_datos():
     return df
 
 
-# ============================================================
-# ESTADO
-# ============================================================
-
 def cargar_alertas_state():
     if not os.path.exists(ALERTAS_STATE_FILE):
         return {}
@@ -273,10 +230,6 @@ def registrar_alerta(state, symbol, tipo):
     state[symbol][tipo] = datetime.now(timezone.utc).isoformat()
 
 
-# ============================================================
-# HELPERS
-# ============================================================
-
 def es_fresco(ts_max, minutos=60):
     ahora = datetime.now(timezone.utc)
     if ts_max.tzinfo is None:
@@ -291,10 +244,6 @@ def cumple_calidad(mc, rank):
         return False
     return True
 
-
-# ============================================================
-# FIBONACCI — confirmación LONG
-# ============================================================
 
 def _velas_5m_fibo(df, symbol, ts_desde, ts_hasta):
     g = df[(df["symbol"] == symbol) &
@@ -409,11 +358,7 @@ def detectar_lider_fibo(df, alias):
     return None
 
 
-# ============================================================
-# 5 VELAS VERDES — DETECCIÓN GRUPAL
-# ============================================================
-
-def detectar_5_velas_verdes(df, alias):
+def detectar_tendencia_grupal(df, alias):
     if alias not in MONEDAS_5_VELAS:
         return None
 
@@ -436,74 +381,35 @@ def detectar_5_velas_verdes(df, alias):
     if len(velas_5m) < 20:
         return None
 
-    ultimas_5 = velas_5m.iloc[-5:]
-    if len(ultimas_5) < 5:
+    ultima_vela = velas_5m.index[-1]
+    inicio_ventana = ultima_vela - timedelta(minutes=VENTANA_GRUPAL_MIN)
+
+    serie_ventana = velas_5m[(velas_5m.index >= inicio_ventana) & (velas_5m.index <= ultima_vela)]
+    if len(serie_ventana) < 2:
         return None
 
-    subidas = 0
-    for j in range(1, len(ultimas_5)):
-        if ultimas_5.iloc[j] > ultimas_5.iloc[j-1]:
-            subidas += 1
-
-    if subidas < 4:
+    precio_inicio = serie_ventana.iloc[0]
+    precio_fin = serie_ventana.iloc[-1]
+    if precio_inicio <= 0:
         return None
 
-    # FILTRO: SUBIDA MÍNIMA DE LAS 5 VELAS (1%)
-    subida_5_velas = (ultimas_5.iloc[-1] - ultimas_5.iloc[0]) / ultimas_5.iloc[0] * 100
-    if subida_5_velas < 1.0:
-        return None
-
-    ventana_suelo = velas_5m.iloc[-30:]
-    p_min = ventana_suelo.min()
-    idx_min = ventana_suelo.idxmin()
-    idx_min_pos = velas_5m.index.get_loc(idx_min)
-
-    if idx_min_pos >= len(velas_5m) - 5:
-        return None
-
-    precio_rebote = ultimas_5.iloc[-1]
-    fecha_rebote = ultimas_5.index[-1]
-
-    idx_rebote = velas_5m.index.get_loc(fecha_rebote)
-    idx_fin = min(idx_rebote + VELAS_VERDES_RESULTADO, len(velas_5m) - 1)
-
-    if idx_fin <= idx_rebote:
-        return None
-
-    serie_ventana = velas_5m.iloc[idx_rebote:idx_fin + 1]
-    precio_max = serie_ventana.max()
-    precio_min = serie_ventana.min()
-
-    subida_desde_rebote = (precio_max - precio_rebote) / precio_rebote * 100
-    drawdown = (precio_min - precio_rebote) / precio_rebote * 100
-
-    if subida_desde_rebote < 1.0:
-        return None
-    if drawdown < -1.0:
+    subida = (precio_fin - precio_inicio) / precio_inicio * 100
+    if subida < SUBIDA_GRUPAL_MIN:
         return None
 
     return {
         "symbol": alias,
-        "tipo": "5_VELAS_VERDES",
-        "precio_suelo": p_min,
-        "fecha_suelo": idx_min,
-        "precio_rebote": precio_rebote,
-        "fecha_rebote": fecha_rebote,
-        "subida_desde_rebote": subida_desde_rebote,
-        "drawdown": drawdown,
-        "subida_5_velas": subida_5_velas,
+        "tipo": "GRUPAL",
+        "precio_inicio": precio_inicio,
+        "precio_fin": precio_fin,
+        "subida": subida,
         "precio_actual": float(g.iloc[-1]["price"]),
         "mc_m": mc / 1e6,
         "rank": int(rank),
     }
 
 
-# ============================================================
-# OPORTUNIDAD INDIVIDUAL — DETECCIÓN
-# ============================================================
-
 def detectar_oportunidad_individual(df, alias):
-    """Detecta oportunidad individual (velas rojas + caída + rebote)."""
     if alias not in MONEDAS_5_VELAS:
         return None
 
@@ -550,7 +456,6 @@ def detectar_oportunidad_individual(df, alias):
     if idx_min_pos >= len(velas_5m) - 5:
         return None
 
-    # CALCULAR VELAS ROJAS CONSECUTIVAS
     rojas_consecutivas = 0
     for j in range(idx_min_pos - 1, max(idx_min_pos - 15, 0), -1):
         if velas_5m.iloc[j] < velas_5m.iloc[j-1]:
@@ -558,7 +463,6 @@ def detectar_oportunidad_individual(df, alias):
         else:
             break
 
-    # CALCULAR CAÍDA PREVIA
     idx_inicio_rojas = idx_min_pos - rojas_consecutivas
     if idx_inicio_rojas < 0:
         return None
@@ -566,7 +470,6 @@ def detectar_oportunidad_individual(df, alias):
     precio_inicio = velas_5m.iloc[idx_inicio_rojas]
     caida_previa = (precio_inicio - p_min) / precio_inicio * 100
 
-    # FILTRO INDIVIDUAL
     if rojas_consecutivas < ROJAS_MIN:
         return None
     if rojas_consecutivas > ROJAS_MAX:
@@ -578,7 +481,7 @@ def detectar_oportunidad_individual(df, alias):
     fecha_rebote = ultimas_5.index[-1]
 
     idx_rebote = velas_5m.index.get_loc(fecha_rebote)
-    idx_fin = min(idx_rebote + VELAS_VERDES_RESULTADO, len(velas_5m) - 1)
+    idx_fin = min(idx_rebote + 30, len(velas_5m) - 1)
 
     if idx_fin <= idx_rebote:
         return None
@@ -613,10 +516,6 @@ def detectar_oportunidad_individual(df, alias):
     }
 
 
-# ============================================================
-# ALERTAS
-# ============================================================
-
 def enviar_alerta_fibo(confirmaciones, btc):
     if not confirmaciones:
         return False
@@ -641,7 +540,7 @@ def enviar_alerta_fibo(confirmaciones, btc):
     return enviar_telegram(msg)
 
 
-def enviar_alerta_5_velas(alertas, btc):
+def enviar_alerta_grupal(alertas, btc):
     if not alertas:
         return False
 
@@ -655,9 +554,9 @@ def enviar_alerta_5_velas(alertas, btc):
     msg += "━━━━━━━━━━━━━━━━━━━\n"
 
     for a in alertas:
-        msg += f"🟢 {a_real(a['symbol'])}\n"
+        msg += f"🟢 {a_real(a['symbol'])} — +{a['subida']:.2f}%\n"
 
-    msg += f"\n📊 {n} monedas con 5 velas verdes"
+    msg += f"\n📊 {n} monedas con subida > {SUBIDA_GRUPAL_MIN}% en {VENTANA_GRUPAL_MIN} min"
     msg += f"\n🚀 Posible tendencia general"
     if btc:
         msg += f"\n⚪ BTC: {btc.get('estado', 'UNKNOWN')}"
@@ -683,10 +582,6 @@ def enviar_alerta_individual(alertas, btc):
 
     return enviar_telegram(msg)
 
-
-# ============================================================
-# ANÁLISIS BTC
-# ============================================================
 
 def analizar_btc(df):
     g = df[df["symbol"] == ALIAS_BTC].sort_values("timestamp")
@@ -715,10 +610,6 @@ def analizar_btc(df):
     return {"estado": estado, "cambio_1h": cambio_1h}
 
 
-# ============================================================
-# MAIN
-# ============================================================
-
 def main():
     ahora = datetime.now(timezone.utc)
     ahora_lima = ahora - timedelta(hours=5)
@@ -728,7 +619,7 @@ def main():
     print(f"{'='*60}")
 
     if not FIBO_NIVELES:
-        print("⚠️ FIBO_NIVELES no configurado. Solo se analizarán 5 velas verdes.")
+        print("⚠️ FIBO_NIVELES no configurado. Solo se analizarán señales grupales e individuales.")
 
     df = cargar_datos()
     print(f"📊 Total: {len(df):,} filas | {df['symbol'].nunique()} monedas")
@@ -738,9 +629,6 @@ def main():
 
     alertas_state = cargar_alertas_state()
 
-    # ============================================================
-    # FIBONACCI
-    # ============================================================
     if FIBO_NIVELES:
         print(f"\n📡 Escaneando {len(TODAS_LIDERES)} monedas líderes (Fibonacci)...")
         confirmaciones = []
@@ -764,36 +652,25 @@ def main():
         else:
             print("   ⚪ Sin confirmaciones Fibonacci.")
 
-    # ============================================================
-    # 5 VELAS VERDES (GRUPAL)
-    # ============================================================
-    print(f"\n📡 Escaneando {len(MONEDAS_5_VELAS)} monedas (5 velas verdes)...")
-    alertas_5v = []
+    print(f"\n📡 Buscando tendencia grupal (subida > {SUBIDA_GRUPAL_MIN}% en {VENTANA_GRUPAL_MIN} min)...")
+    grupales = []
     for alias in MONEDAS_5_VELAS:
-        r = detectar_5_velas_verdes(df, alias)
+        r = detectar_tendencia_grupal(df, alias)
         if r:
-            if not paso_cooldown(alertas_state, r["symbol"], "5_VELAS", COOLDOWN_5_VELAS):
-                continue
-            alertas_5v.append(r)
+            grupales.append(r)
 
-    if len(alertas_5v) >= MIN_MONEDAS_GRUPAL:
-        print(f"   🟢 SEÑAL GRUPAL: {len(alertas_5v)} monedas con 5 velas verdes")
-        for a in alertas_5v:
-            print(f"      {a_real(a['symbol'])}")
+    if len(grupales) >= MIN_MONEDAS_GRUPAL:
+        print(f"   🟢 SEÑAL GRUPAL: {len(grupales)} monedas")
+        for a in grupales:
+            print(f"      {a_real(a['symbol'])} — +{a['subida']:.2f}%")
 
-        if enviar_alerta_5_velas(alertas_5v, btc):
+        if enviar_alerta_grupal(grupales, btc):
             print(f"   📱 Alerta grupal enviada")
-            for a in alertas_5v:
-                registrar_alerta(alertas_state, a["symbol"], "5_VELAS")
-            guardar_alertas_state(alertas_state)
-    elif len(alertas_5v) > 0:
-        print(f"   ⚪ Solo {len(alertas_5v)} moneda(s) con 5 velas verdes (sin señal grupal, mínimo {MIN_MONEDAS_GRUPAL})")
+    elif len(grupales) > 0:
+        print(f"   ⚪ Solo {len(grupales)} moneda(s) (mínimo {MIN_MONEDAS_GRUPAL})")
     else:
-        print("   ⚪ Sin alertas de 5 velas verdes.")
+        print("   ⚪ Sin tendencia grupal.")
 
-    # ============================================================
-    # OPORTUNIDADES INDIVIDUALES
-    # ============================================================
     print(f"\n📡 Buscando oportunidades individuales...")
     individuales = []
     for alias in MONEDAS_5_VELAS:
