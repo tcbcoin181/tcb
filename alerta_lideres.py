@@ -558,6 +558,12 @@ def detectar_5_velas_verdes(df, alias):
     if subidas < 4:
         return None
 
+    # === FILTRO: SUBIDA MÍNIMA DE LAS 5 VELAS (1%) ===
+    subida_5_velas = (ultimas_5.iloc[-1] - ultimas_5.iloc[0]) / ultimas_5.iloc[0] * 100
+    if subida_5_velas < 1.0:
+        return None
+    # === FIN FILTRO ===
+
     # === VERIFICAR SUELO RECIENTE ===
     ventana_suelo = velas_5m.iloc[-30:]
     p_min = ventana_suelo.min()
@@ -600,6 +606,7 @@ def detectar_5_velas_verdes(df, alias):
         "fecha_rebote": fecha_rebote,
         "subida_desde_rebote": subida_desde_rebote,
         "drawdown": drawdown,
+        "subida_5_velas": subida_5_velas,
         "precio_actual": float(g.iloc[-1]["price"]),
         "mc_m": mc / 1e6,
         "rank": int(rank),
