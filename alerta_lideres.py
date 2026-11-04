@@ -4,7 +4,7 @@
 ALERTA LÍDERES — FIBONACCI + 5 VELAS VERDES
 
 1. Fibonacci confirmación LONG (monedas líderes)
-2. 5 velas verdes después de suelo (monedas que funcionan)
+2. 5 velas verdes después de suelo (señal grupal, mínimo 3 monedas)
 """
 
 import json
@@ -256,6 +256,7 @@ VELAS_VERDES_N          = 5
 VELAS_VERDES_VENTANA    = 15
 VELAS_VERDES_RESULTADO  = 30
 COOLDOWN_5_VELAS        = 2
+MIN_MONEDAS_GRUPAL      = 3
 
 MC_MIN           = 50_000_000
 MC_MAX           = 5_000_000_000
@@ -613,20 +614,20 @@ def enviar_alerta_fibo(confirmaciones, btc):
     if not confirmaciones:
         return False
 
-    msg = "✅ *FIBONACCI — CONFIRMACIÓN LONG*\n"
+    n = len(confirmaciones)
+    if n >= 3:
+        titulo = f"🔥 FIBO GRUPAL: {n} LÍDERES"
+    else:
+        titulo = f"✅ FIBO: {n} LÍDER(ES)"
+
+    msg = f"{titulo}\n"
     msg += "━━━━━━━━━━━━━━━━━━━\n"
 
     for a in confirmaciones:
-        hora_toque = (a["ts_toque"] - timedelta(hours=5)).strftime("%H:%M")
         emoji = "🟢" if a["nivel"] == "0.786" else "🟡"
-        msg += f"{emoji} *{a_real(a['symbol'])}* — {a['nivel']} ({a['grupo']})\n"
-        msg += f"   Precio: ${a['precio']:.6f}\n"
-        msg += f"   Nivel:  ${a['nivel_valor']:.6f}\n"
-        msg += f"   Rebote: +{a['rebote_pct']:.2f}% (máx +{a['rebote_max_pct']:.2f}%)\n"
-        msg += f"   Velas OK: {a['velas_consecutivas_ok']} consecutivas\n"
-        msg += f"   Toque: {hora_toque} Lima\n\n"
+        msg += f"{emoji} {a_real(a['symbol'])} — {a['nivel']} (+{a['rebote_pct']:.2f}%)\n"
 
-    msg += "🚀 *Entrada LONG confirmada*"
+    msg += f"\n🚀 Entrada LONG confirmada"
     if btc:
         msg += f"\n⚪ BTC: {btc.get('estado', 'UNKNOWN')}"
 
@@ -637,18 +638,20 @@ def enviar_alerta_5_velas(alertas, btc):
     if not alertas:
         return False
 
-    msg = "🟢 *5 VELAS VERDES DESPUÉS DE SUELO*\n"
+    n = len(alertas)
+    if n >= 5:
+        titulo = f"🔥 SEÑAL FUERTE: {n} MONEDAS"
+    else:
+        titulo = f"🟢 SEÑAL GRUPAL: {n} MONEDAS"
+
+    msg = f"{titulo}\n"
     msg += "━━━━━━━━━━━━━━━━━━━\n"
 
     for a in alertas:
-        hora_rebote = (a["fecha_rebote"] - timedelta(hours=5)).strftime("%H:%M")
-        msg += f"🟢 *{a_real(a['symbol'])}*\n"
-        msg += f"   Suelo: ${a['precio_suelo']:.6f} ({a['fecha_suelo'].strftime('%H:%M')})\n"
-        msg += f"   Rebote: ${a['precio_rebote']:.6f} ({hora_rebote})\n"
-        msg += f"   Subida esperada: +{a['subida_desde_rebote']:.2f}%\n"
-        msg += f"   Drawdown: {a['drawdown']:.2f}%\n\n"
+        msg += f"🟢 {a_real(a['symbol'])}\n"
 
-    msg += "🚀 *Entrada LONG confirmada*"
+    msg += f"\n📊 {n} monedas con 5 velas verdes"
+    msg += f"\n🚀 Posible tendencia general"
     if btc:
         msg += f"\n⚪ BTC: {btc.get('estado', 'UNKNOWN')}"
 
@@ -719,24 +722,24 @@ def main():
             r = detectar_lider_fibo(df, alias)
             if r:
                 if not paso_cooldown(alertas_state, r["symbol"], "FIBO", COOLDOWN_FIBO):
-                    print(f"   ⏳ {a_real(alias)} en cooldown")
                     continue
                 confirmaciones.append(r)
-                print(f"   ✅ FIBO {r['nivel']}: {a_real(alias)} ({r['grupo']}) — rebote +{r['rebote_pct']:.2f}%")
 
         if confirmaciones:
+            print(f"   ✅ {len(confirmaciones)} confirmaciones Fibonacci")
+            for a in confirmaciones:
+                print(f"      {a_real(a['symbol'])} — {a['nivel']} rebote +{a['rebote_pct']:.2f}%")
+
             if enviar_alerta_fibo(confirmaciones, btc):
                 print(f"   📱 Alerta FIBO enviada")
                 for a in confirmaciones:
                     registrar_alerta(alertas_state, a["symbol"], "FIBO")
                 guardar_alertas_state(alertas_state)
-            else:
-                print(f"   ⚠️ No se pudo enviar la alerta FIBO")
         else:
             print("   ⚪ Sin confirmaciones Fibonacci.")
 
     # ============================================================
-    # 5 VELAS VERDES
+    # 5 VELAS VERDES (GRUPAL - MÍNIMO 3 MONEDAS)
     # ============================================================
     print(f"\n📡 Escaneando {len(MONEDAS_5_VELAS)} monedas (5 velas verdes)...")
     alertas_5v = []
@@ -744,19 +747,22 @@ def main():
         r = detectar_5_velas_verdes(df, alias)
         if r:
             if not paso_cooldown(alertas_state, r["symbol"], "5_VELAS", COOLDOWN_5_VELAS):
-                print(f"   ⏳ {a_real(alias)} en cooldown")
                 continue
             alertas_5v.append(r)
-            print(f"   🟢 5 VELAS: {a_real(alias)} — subida +{r['subida_desde_rebote']:.2f}%")
 
-    if alertas_5v:
+    # === ALERTA GRUPAL: mínimo 3 monedas ===
+    if len(alertas_5v) >= MIN_MONEDAS_GRUPAL:
+        print(f"   🟢 SEÑAL GRUPAL: {len(alertas_5v)} monedas con 5 velas verdes")
+        for a in alertas_5v:
+            print(f"      {a_real(a['symbol'])}")
+
         if enviar_alerta_5_velas(alertas_5v, btc):
-            print(f"   📱 Alerta 5 velas enviada")
+            print(f"   📱 Alerta grupal enviada")
             for a in alertas_5v:
                 registrar_alerta(alertas_state, a["symbol"], "5_VELAS")
             guardar_alertas_state(alertas_state)
-        else:
-            print(f"   ⚠️ No se pudo enviar la alerta 5 velas")
+    elif len(alertas_5v) > 0:
+        print(f"   ⚪ Solo {len(alertas_5v)} moneda(s) con 5 velas verdes (sin señal grupal, mínimo {MIN_MONEDAS_GRUPAL})")
     else:
         print("   ⚪ Sin alertas de 5 velas verdes.")
 
