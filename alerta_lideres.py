@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-ALERTA LÍDERES — FIBONACCI + 5 VELAS VERDES
+ALERTA LÍDERES — F+ 5V
 
-1. Fibonacci confirmación LONG (monedas líderes)
-2. 5 velas verdes después de suelo (señal grupal, mínimo 3 monedas)
+1. F confL(monedas líderes)
+2. 5 V  (gru, 3)
 """
 
 import json
