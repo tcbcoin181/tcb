@@ -87,154 +87,35 @@ def a_real(alias):
 # GRUPOS DE MONEDAS
 # ============================================================
 
-# Líderes (Fibonacci)
-GRUPO_RAPIDO  = {"xkr1", "xkq4", "xkr2", "xkr3"}   # BAT, CC, FUN, DOG
-GRUPO_LENTO   = {"xkv", "xkr4", "xkr5", "xkr6"}    # W, CAP, BR, SKR
-GRUPO_BIMODAL = {"xkr7", "xkr8", "xkr9"}            # BTW, HUMA, STONK
+# Líderes (F)
+GRUPO_RAPIDO  = {"xkr1", "xkq4", "xkr2", "xkr3"}
+GRUPO_LENTO   = {"xkv", "xkr4", "xkr5", "xkr6"}
+GRUPO_BIMODAL = {"xkr7", "xkr8", "xkr9"}
 TODAS_LIDERES = GRUPO_RAPIDO | GRUPO_LENTO | GRUPO_BIMODAL
 
-# Monedas que funcionan con 5 velas verdes (134 monedas)
+# Monedas que funcionan con 5 v (134 monedas)
 MONEDAS_5_VELAS = {
-    # Originales del JSON
-    "xky",    # AGT
-    "xkq1",   # Q
-    "xkq9",   # SUPER
-    "xkq6",   # FTT
-    "xkt",    # EIGEN
-    "xku",    # ETHFI
-    "xka",    # PEPE
-    "xkb",    # BONK
-    "xkZ",    # WIF
-    "xkD",    # SHIB
-    "xkF",    # BCH
-    "xkA",    # LINK
-    "xk5",    # XRP
-    "xk4",    # BNB
-    "xk9",    # DOT
-    "xkj",    # AAVE
-    "xkn",    # COMP
-    "xkE",    # LTC
-    "xkG",    # TRX
-    "xk6",    # ADA
-    "xk8",    # AVAX
-    "xkR",    # SUI
-    "xkL",    # NEAR
-    "xkM",    # APT
-    "xkN",    # FIL
-    "xkQ",    # INJ
-    "xkT",    # TIA
-    "xkV",    # STRK
-    "xkW",    # ONDO
-    "xkX",    # JUP
-    "xkY",    # ENA
-    "xke",    # FET
-    "xkf",    # IMX
-    "xki",    # GRT
-    "xkl",    # CRV
-    "xkm",    # SNX
-    "xkp",    # 1INCH
-    "xkr",    # LDO
-    "xkv",    # W
-    "xk0",    # LIT
-    "xkq3",   # SOON
-    "xkq4",   # CC
-    "xkqe",   # SYRUP
-    "xkqf",   # RAY
-    "xkqg",   # MET
-    # Nuevas (del JSON ampliado)
-    "xkr1",   # BAT
-    "xkr5",   # BR
-    "xkr9",   # STONK
-    "xkr10",  # RAIN
-    "xkr11",  # TIBBIR
-    "xkr12",  # TAG
-    "xkr14",  # SOXLB
-    "xkr15",  # VVV
-    "xkr16",  # GENIUS
-    "xkr17",  # ZEC
-    "xkr18",  # MAGMA
-    "xkr19",  # KNTQ
-    "xkr20",  # M
-    "xkr21",  # COW
-    "xkr22",  # PREDICT
-    "xkr23",  # RSR
-    "xkr24",  # TEL
-    "xkr25",  # NPC
-    "xkr26",  # PENDLE
-    "xkr27",  # JASMY
-    "xkr28",  # ORDI
-    "xkr29",  # ALT
-    "xkr30",  # SKY
-    "xkr31",  # UB
-    "xkr32",  # ZRO
-    "xkr33",  # FLOKI
-    "xkr34",  # POL
-    "xkr35",  # DIEM
-    "xkr36",  # ZAMA
-    "xkr37",  # LUNC
-    "xkr38",  # EDGE
-    "xkr39",  # RUNE
-    "xkr40",  # SN51
-    "xkr41",  # 币安人生
-    "xkr42",  # FLUID
-    "xkr43",  # NIGHT
-    "xkr44",  # TRUMP
-    "xkr45",  # MNT
-    "xkr46",  # STX
-    "xkr47",  # PLUME
-    "xkr48",  # DEEP
-    "xkr49",  # ZETA
-    "xkr50",  # AXS
-    "xkr51",  # NMR
-    "xkr52",  # PEARL
-    "xkr53",  # PROM
-    "xkr54",  # BABY
-    "xkr55",  # BDX
-    "xkr56",  # BOME
-    "xkr57",  # GALA
-    "xkr58",  # MANA
-    "xkr59",  # TWT
-    "xkr60",  # AXL
-    "xkr61",  # WEMIX
-    "xkr62",  # KMNO
-    "xkr63",  # KAIA
-    "xkr64",  # CARDS
-    "xkr65",  # HBAR
-    "xkr66",  # WIN
-    "xkr67",  # MSTRB
-    "xkr68",  # EGLD
-    "xkr69",  # MSTRX
-    "xkr70",  # VIRTUAL
-    "xkr71",  # NFT
-    "xkr72",  # BEAM
-    "xkr73",  # ASTER
-    "xkr74",  # CHZ
-    "xkr75",  # ZK
-    "xkr76",  # KITE
-    "xkr77",  # CVX
-    "xkr78",  # RED
-    "xkr79",  # IOTA
-    "xkr80",  # ICP
-    "xkr81",  # APE
-    "xkr82",  # GRASS
-    "xkr83",  # FLR
-    "xkr84",  # CATE
-    "xkr85",  # MX
-    "xkr86",  # A
-    "xkr87",  # CT
-    "xkr88",  # GMX
-    "xkr89",  # SUN
-    "xkr90",  # CFX
-    "xkr91",  # JST
-    "xkr92",  # GAS
-    "xkr93",  # JSM
-    "xkr94",  # AWE
-    "xkr95",  # SLX
-    "xkr96",  # APEPE
+    "xky", "xkq1", "xkq9", "xkq6", "xkt", "xku", "xka", "xkb", "xkZ",
+    "xkD", "xkF", "xkA", "xk5", "xk4", "xk9", "xkj", "xkn", "xkE",
+    "xkG", "xk6", "xk8", "xkR", "xkL", "xkM", "xkN", "xkQ", "xkT",
+    "xkV", "xkW", "xkX", "xkY", "xke", "xkf", "xki", "xkl", "xkm",
+    "xkp", "xkr", "xkv", "xk0", "xkq3", "xkq4", "xkqe", "xkqf",
+    "xkqg", "xkr1", "xkr5", "xkr9", "xkr10", "xkr11", "xkr12",
+    "xkr14", "xkr15", "xkr16", "xkr17", "xkr18", "xkr19", "xkr20",
+    "xkr21", "xkr22", "xkr23", "xkr24", "xkr25", "xkr26", "xkr27",
+    "xkr28", "xkr29", "xkr30", "xkr31", "xkr32", "xkr33", "xkr34",
+    "xkr35", "xkr36", "xkr37", "xkr38", "xkr39", "xkr40", "xkr41",
+    "xkr42", "xkr43", "xkr44", "xkr45", "xkr46", "xkr47", "xkr48",
+    "xkr49", "xkr50", "xkr51", "xkr52", "xkr53", "xkr54", "xkr55",
+    "xkr56", "xkr57", "xkr58", "xkr59", "xkr60", "xkr61", "xkr62",
+    "xkr63", "xkr64", "xkr65", "xkr66", "xkr67", "xkr68", "xkr69",
+    "xkr70", "xkr71", "xkr72", "xkr73", "xkr74", "xkr75", "xkr76",
+    "xkr77", "xkr78", "xkr79", "xkr80", "xkr81", "xkr82", "xkr83",
+    "xkr84", "xkr85", "xkr86", "xkr87", "xkr88", "xkr89", "xkr90",
+    "xkr91", "xkr92", "xkr93", "xkr94", "xkr95", "xkr96",
 }
 
 ALIAS_BTC = "xk1"
-
 # ============================================================
 # UMBRALES — FIBONACCI
 # ============================================================
